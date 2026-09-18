@@ -1,0 +1,392 @@
+/* =========================================================
+   TASKHERO - SHARED CSS
+   This file is used by ALL TaskHero pages.
+
+   Pages using this file:
+   - home.html
+   - post-task.html
+   - my-task.html
+   - messeges-page.html
+   ========================================================= */
+
+
+/* =========================================================
+   1. BASIC SETTINGS
+   ========================================================= */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+body {
+
+    font-family: Arial, sans-serif;
+
+    background: #ffffff;
+
+    color: #222222;
+
+    transition: background 0.2s, color 0.2s;
+
+}
+
+
+/* =========================================================
+   2. STICKY NAVIGATION BAR
+
+   This navbar stays at the top while scrolling.
+   ========================================================= */
+
+.navbar {
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 1000;
+
+    height: 80px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding: 0 40px;
+
+    background: #ffffff;
+
+    border-bottom: 1px solid #eeeeee;
+
+}
+
+
+/* =========================================================
+   3. TASKHERO LOGO
+   ========================================================= */
+
+.logo {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    font-size: 22px;
+
+    font-weight: bold;
+
+}
+
+
+.logo-icon {
+
+    width: 45px;
+
+    height: 45px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background: #8d1538;
+
+    color: white;
+
+    border-radius: 13px;
+
+}
+
+
+/* =========================================================
+   4. NAVIGATION LINKS
+   ========================================================= */
+
+.nav-links {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+}
+
+
+.nav-button {
+
+    border: none;
+
+    background: transparent;
+
+    padding: 12px 16px;
+
+    border-radius: 15px;
+
+    font-size: 15px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    color: #222222;
+
+}
+
+
+.nav-button:hover {
+
+    background: #f5e5eb;
+
+}
+
+
+/* Current page */
+
+.nav-button.active {
+
+    background: #f3c8dd;
+
+    color: #85143b;
+
+}
+
+
+/* =========================================================
+   5. RIGHT SIDE NAVIGATION ICONS
+   ========================================================= */
+
+.nav-icons {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 12px;
+
+}
+
+
+.icon-button {
+
+    width: 42px;
+
+    height: 42px;
+
+    border: none;
+
+    background: transparent;
+
+    border-radius: 12px;
+
+    font-size: 20px;
+
+    cursor: pointer;
+
+}
+
+
+.icon-button:hover {
+
+    background: #f5e5eb;
+
+}
+
+
+/* =========================================================
+   6. GENERAL PAGE CONTAINER
+   ========================================================= */
+
+.page-container {
+
+    max-width: 1200px;
+
+    margin: 0 auto;
+
+    padding: 40px 30px;
+
+}
+
+
+/* =========================================================
+   7. COMMON BUTTON
+   ========================================================= */
+
+.primary-button {
+
+    border: none;
+
+    background: #8d1538;
+
+    color: white;
+
+    padding: 12px 20px;
+
+    border-radius: 10px;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+}
+
+
+.primary-button:hover {
+
+    background: #70102d;
+
+}
+
+
+/* =========================================================
+   8. DARK MODE
+
+   JavaScript adds "dark-mode" to the body.
+
+   Example:
+
+   <body class="dark-mode">
+
+   This changes the appearance of EVERY page.
+   ========================================================= */
+
+body.dark-mode {
+
+    background: #181818;
+
+    color: #ffffff;
+
+}
+
+
+/* Navbar */
+
+body.dark-mode .navbar {
+
+    background: #202020;
+
+    border-color: #333333;
+
+}
+
+
+/* Navigation buttons */
+
+body.dark-mode .nav-button {
+
+    color: #ffffff;
+
+}
+
+
+body.dark-mode .nav-button:hover {
+
+    background: #333333;
+
+}
+
+
+body.dark-mode .nav-button.active {
+
+    background: #4d2535;
+
+    color: #ffb6d0;
+
+}
+
+
+/* Icons */
+
+body.dark-mode .icon-button {
+
+    color: white;
+
+}
+
+
+body.dark-mode .icon-button:hover {
+
+    background: #333333;
+
+}
+
+
+/* Cards */
+
+body.dark-mode .card {
+
+    background: #222222;
+
+    border-color: #333333;
+
+}
+
+
+/* Inputs */
+
+body.dark-mode input,
+
+body.dark-mode textarea,
+
+body.dark-mode select {
+
+    background: #292929;
+
+    color: white;
+
+    border-color: #444444;
+
+}
+
+
+/* =========================================================
+   9. MOBILE NAVIGATION
+   ========================================================= */
+
+@media (max-width: 850px) {
+
+    .navbar {
+
+        height: auto;
+
+        padding: 15px;
+
+        flex-wrap: wrap;
+
+        gap: 10px;
+
+    }
+
+
+    .nav-links {
+
+        order: 3;
+
+        width: 100%;
+
+        overflow-x: auto;
+
+    }
+
+
+    .nav-button {
+
+        white-space: nowrap;
+
+    }
+
+
+    .page-container {
+
+        padding: 25px 20px;
+
+    }
+
+}

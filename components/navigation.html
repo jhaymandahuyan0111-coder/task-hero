@@ -1,0 +1,31 @@
+<nav class="navbar">
+
+    <!-- LOGO -->
+    <div class="logo" onclick="goHome()" title="TaskHero Home">
+        <div class="logo-icon">T</div>
+        TaskHero
+    </div>
+
+    <!-- MAIN LINKS -->
+    <div class="nav-links">
+        <button class="nav-button" onclick="goHome()" title="Browse tasks" aria-label="Browse tasks">⌂</button>
+        <button class="nav-button mobile-nav-button" onclick="postTask()" title="Post a task" aria-label="Post a task">＋</button>
+        <button class="nav-button" onclick="myTasks()" title="My tasks" aria-label="My tasks">≡</button>
+        <button class="nav-button" onclick="messages()" title="Messages" aria-label="Messages">✉</button>
+        <button class="nav-button mobile-nav-button" onclick="profile()" title="Profile" aria-label="Profile">●</button>
+    </div>
+
+    <!-- SECONDARY ACTIONS -->
+    <div class="nav-actions">
+        <button class="icon-button" onclick="goBack()" title="Return to previous page" aria-label="Return to previous page">←</button>
+        <button class="nav-button post-task-button" onclick="postTask()" title="Post a task" aria-label="Post a task">＋</button>
+        <button class="icon-button" id="themeButton" onclick="toggleDarkMode()" title="Toggle Theme">◐</button>
+        <button class="icon-button" id="notif-btn" onclick="notifications()" title="Notifications">!</button>
+    </div>
+
+    <!-- ACCOUNT -->
+    <div class="nav-icons">
+        <button class="icon-button" onclick="profile()" title="Profile" aria-label="Profile">●</button>
+    </div>
+
+</nav>

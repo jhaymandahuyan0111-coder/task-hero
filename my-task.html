@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskHero - My Tasks</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+.page-header { margin-bottom: 32px; }
+.page-header h1 { font-size: 36px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }
+.page-header p { color: #6b7280; font-size: 15px; }
+
+/* TABS */
+.tabs { display: flex; gap: 6px; margin-bottom: 28px; }
+.tab-btn {
+    padding: 11px 20px; border: 1.5px solid rgba(91,75,248,0.15);
+    background: white; font-size: 14px; font-weight: 700;
+    cursor: pointer; color: #6b7280; border-radius: 14px;
+    font-family: inherit; transition: all 0.18s;
+    box-shadow: var(--clay-shadow-sm);
+}
+.tab-btn:hover { border-color: #7c6cff; color: #5b4bf8; transform: translateY(-1px); box-shadow: var(--clay-shadow); }
+.tab-btn.active {
+    background: #408a71;
+    border-color: transparent; color: white;
+    box-shadow: 0 3px 0 #4535d4, 0 6px 18px rgba(91,75,248,0.35), inset 0 1px 0 rgba(255,255,255,0.25);
+    transform: translateY(-1px);
+}
+.tab-section { display: none; }
+.tab-section.active { display: block; }
+
+/* TASK LIST */
+.my-task-list { display: flex; flex-direction: column; gap: 16px; }
+.my-task-card {
+    display: flex; gap: 20px; padding: 24px;
+    background: white;
+    border: 1.5px solid rgba(91,75,248,0.1);
+    border-radius: 22px;
+    box-shadow: var(--clay-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative; overflow: hidden;
+}
+.my-task-card::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: #408a71;
+    border-radius: 4px 0 0 4px;
+}
+.my-task-card:hover { transform: translateY(-3px); box-shadow: var(--clay-shadow-hover); }
+.task-info { flex: 1; min-width: 0; }
+.task-cat-tag {
+    display: inline-flex; align-items: center;
+    padding: 4px 11px; margin-bottom: 10px;
+    background: #b0e4cc;
+    color: #5b4bf8; border-radius: 999px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px;
+    border: 1px solid rgba(91,75,248,0.15);
+}
+.task-info h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.task-info p { color: #9ca3af; font-size: 13px; margin-bottom: 5px; }
+.task-price-row { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+.task-price { font-size: 22px; font-weight: 800; color: #5b4bf8; letter-spacing: -0.5px; }
+.task-actions { display: flex; gap: 8px; }
+.task-action-btn {
+    padding: 7px 14px; border-radius: 10px;
+    font-size: 12px; font-weight: 700; cursor: pointer;
+    border: 1.5px solid; font-family: inherit; transition: all 0.15s;
+    box-shadow: var(--clay-shadow-sm);
+}
+.btn-view { border-color: rgba(91,75,248,0.18); background: var(--surface); color: #5b4bf8; }
+.btn-view:hover { background: white; transform: translateY(-1px); }
+.btn-delete { border-color: rgba(239,68,68,0.2); background: rgba(254,242,242,0.8); color: #dc2626; }
+.btn-delete:hover { background: #fee2e2; transform: translateY(-1px); }
+.btn-complete { border-color: rgba(5,150,105,0.2); background: rgba(240,253,244,0.8); color: #059669; }
+.btn-complete:hover { background: #dcfce7; transform: translateY(-1px); }
+
+/* STATUS */
+.status-col { display: flex; flex-direction: column; align-items: flex-end; justify-content: flex-start; gap: 8px; min-width: 110px; }
+.status-badge { padding: 6px 13px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.badge-open      { background: rgba(251,191,36,0.15); color: #b45309; border: 1px solid rgba(251,191,36,0.3); }
+.badge-accepted  { background: rgba(16,185,129,0.12); color: #059669; border: 1px solid rgba(16,185,129,0.25); }
+.badge-completed { background: rgba(91,75,248,0.12); color: #5b4bf8; border: 1px solid rgba(91,75,248,0.2); }
+.badge-cancelled { background: rgba(239,68,68,0.1); color: #dc2626; border: 1px solid rgba(239,68,68,0.2); }
+
+/* EMPTY STATE */
+.empty-state {
+    text-align: center; padding: 60px 20px;
+    border: 2px dashed rgba(91,75,248,0.2);
+    border-radius: 22px;
+    background: rgba(91,75,248,0.02);
+}
+.empty-icon { font-size: 52px; margin-bottom: 16px; filter: drop-shadow(0 4px 8px rgba(91,75,248,0.2)); }
+.empty-state h3 { margin-bottom: 8px; font-size: 18px; font-weight: 700; }
+.empty-state p { color: #9ca3af; margin-bottom: 22px; font-size: 14px; }
+.delete-modal-body { margin-bottom: 22px; }
+.delete-modal-body p { color: #6b7280; }
+
+/* DARK MODE */
+body.dark-mode .page-header p { color: #9ca3c8; }
+body.dark-mode .tab-btn { background: #1a1628; border-color: rgba(124,108,255,0.18); color: #9ca3c8; box-shadow: 0 2px 0 rgba(0,0,0,0.25), 0 4px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.04); }
+body.dark-mode .tab-btn:hover { border-color: #a78bfa; color: #c4b5fd; }
+body.dark-mode .my-task-card { background: #1a1628; border-color: rgba(124,108,255,0.12); }
+body.dark-mode .task-info h3 { color: #e5e3ff; }
+body.dark-mode .task-info p { color: #6b7280; }
+body.dark-mode .task-price { color: #a78bfa; }
+body.dark-mode .task-cat-tag { background: rgba(91,75,248,0.18); color: #c4b5fd; border-color: rgba(124,108,255,0.25); }
+body.dark-mode .btn-view { background: rgba(91,75,248,0.1); border-color: rgba(124,108,255,0.2); color: #c4b5fd; }
+body.dark-mode .btn-delete { background: rgba(220,38,38,0.08); border-color: rgba(220,38,38,0.2); color: #f87171; }
+body.dark-mode .btn-complete { background: rgba(5,150,105,0.08); border-color: rgba(5,150,105,0.2); color: #34d399; }
+body.dark-mode .empty-state { border-color: rgba(124,108,255,0.15); background: rgba(91,75,248,0.04); }
+body.dark-mode .empty-state p { color: #6b7280; }
+body.dark-mode .delete-modal-body p { color: #9ca3c8; }
+body.dark-mode .badge-open      { background: rgba(251,191,36,0.1);  color: #fbbf24; border-color: rgba(251,191,36,0.2); }
+body.dark-mode .badge-accepted  { background: rgba(52,211,153,0.1);  color: #34d399; border-color: rgba(52,211,153,0.2); }
+body.dark-mode .badge-completed { background: rgba(167,139,250,0.12); color: #a78bfa; border-color: rgba(167,139,250,0.2); }
+body.dark-mode .badge-cancelled { background: rgba(248,113,113,0.1); color: #f87171; border-color: rgba(248,113,113,0.2); }
+
+@media (max-width: 700px) {
+    .my-task-card { flex-direction: column; }
+    .status-col { flex-direction: row; align-items: center; }
+    .page-header h1 { font-size: 28px; }
+    .tabs { overflow-x: auto; }
+    .tab-btn { white-space: nowrap; }
+}
+    </style>
+</head>
+<body>
+    <div id="shared-navigation"></div>
+    <main class="page-container">
+        <div class="page-header">
+            <h1>My Tasks</h1>
+            <p>Manage the tasks you posted and the tasks you accepted.</p>
+        </div>
+        <div class="tabs">
+            <button class="tab-btn active" id="postedTab" onclick="switchTab('posted')">Tasks I Posted</button>
+            <button class="tab-btn" id="acceptedTab" onclick="switchTab('accepted')">Tasks I Accepted</button>
+        </div>
+        <div class="tab-section active" id="postedSection"><div class="my-task-list" id="postedList"></div></div>
+        <div class="tab-section" id="acceptedSection"><div class="my-task-list" id="acceptedList"></div></div>
+    </main>
+
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-box">
+            <h2>Delete this task?</h2>
+            <div class="delete-modal-body"><p>This will permanently remove <strong id="deleteTaskName"></strong> from your posted tasks.</p></div>
+            <div class="modal-buttons">
+                <button class="modal-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="modal-confirm" style="background:#a52e2e;box-shadow:0 3px 0 #762020,0 6px 18px rgba(165,46,46,0.25)" onclick="confirmDelete()">Delete Task</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="detailModal">
+        <div class="modal-box" style="max-width:520px">
+            <h2 id="detailTitle" style="margin-bottom:16px"></h2>
+            <div id="detailBody" style="margin-bottom:22px"></div>
+            <div class="modal-buttons"><button class="modal-confirm" onclick="document.getElementById('detailModal').classList.remove('open')">Close</button></div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let pendingDeleteId=null;
+        function switchTab(tab){document.querySelectorAll(".tab-section").forEach(s=>s.classList.remove("active"));document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));document.getElementById(tab+"Section").classList.add("active");document.getElementById(tab+"Tab").classList.add("active");}
+        function loadMyTasks(){renderPosted();renderAccepted();}
+        function renderPosted(){
+            const user=JSON.parse(localStorage.getItem("taskhero-user")||"null");
+            const tasks=JSON.parse(localStorage.getItem("taskhero-tasks")||"[]").filter(t=>user&&t.postedBy===user.id);
+            const list=document.getElementById("postedList");
+            if(!tasks.length){list.innerHTML=emptyState("","No posted tasks yet","Post a task and let the community help you out.","Post a Task","postTask()");return;}
+            list.innerHTML=tasks.map(task=>`
+                <div class="my-task-card" id="card-${task.id}">
+                    <div class="task-info">
+                        <span class="task-cat-tag">${escHtml(task.category)}</span>
+                        <h3>${escHtml(task.title)}</h3>
+                        <p>Location: ${escHtml(task.location)}</p>
+                        ${task.deadline?`<p>Deadline: ${formatDate(task.deadline)}</p>`:""}
+                        <p style="margin-top:6px;font-size:13px;color:#9ca3af">${escHtml(task.description.substring(0,90))}${task.description.length>90?"…":""}</p>
+                        <div class="task-price-row">
+                            <span class="task-price">₱${Number(task.budget).toLocaleString()}</span>
+                            <div class="task-actions">
+                                <button class="task-action-btn btn-view" onclick="viewTask('${task.id}','posted')">View</button>
+                                <button class="task-action-btn btn-delete" onclick="openDeleteModal('${task.id}','${escHtml(task.title)}')">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="status-col"><span class="status-badge ${statusClass(task.status)}">${capitalize(task.status)}</span></div>
+                </div>`).join("");
+        }
+        function renderAccepted(){
+            const tasks=JSON.parse(localStorage.getItem("taskhero-accepted")||"[]");
+            const all=tasks;
+            const list=document.getElementById("acceptedList");
+            if(!all.length){list.innerHTML=emptyState("","No accepted tasks yet","Browse open tasks and accept one to get started.","Browse Tasks","goHome()");return;}
+            list.innerHTML=all.map(task=>`
+                <div class="my-task-card" id="acc-card-${task.id}">
+                    <div class="task-info">
+                        <span class="task-cat-tag">${escHtml(task.category)}</span>
+                        <h3>${escHtml(task.title)}</h3>
+                        <p>Location: ${escHtml(task.location)}</p>
+                        ${task.deadline?`<p>Deadline: ${formatDate(task.deadline)}</p>`:""}
+                        <p style="margin-top:6px;font-size:13px;color:#9ca3af">${escHtml(task.description.substring(0,90))}${task.description.length>90?"…":""}</p>
+                        <div class="task-price-row">
+                            <span class="task-price">₱${Number(task.budget).toLocaleString()}</span>
+                            <div class="task-actions">
+                                <button class="task-action-btn btn-view" onclick="viewTask('${task.id}','accepted')">View</button>
+                                ${task.status==="accepted"?`<button class="task-action-btn btn-complete" onclick="markComplete('${task.id}')">Mark Done</button>`:""}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="status-col"><span class="status-badge ${statusClass(task.status)}">${capitalize(task.status)}</span></div>
+                </div>`).join("");
+        }
+        function viewTask(id,source){
+            let task;
+            if(source==="posted"){const tasks=JSON.parse(localStorage.getItem("taskhero-tasks")||"[]");task=tasks.find(t=>t.id===id);}
+            else{const acc=JSON.parse(localStorage.getItem("taskhero-accepted")||"[]");task=acc.find(t=>t.id===id);}
+            if(!task)return;
+            document.getElementById("detailTitle").innerText=task.title;
+            document.getElementById("detailBody").innerHTML=`<div style="display:flex;flex-direction:column;gap:12px"><span class="task-cat-tag">${escHtml(task.category)}</span><p style="color:#6b7280;line-height:1.6">${escHtml(task.description)}</p><hr style="border:none;border-top:1px solid rgba(91,75,248,0.1)"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:14px"><div><strong>Location</strong><br><span style="color:#9ca3af">${escHtml(task.location)}</span></div><div><strong>Deadline</strong><br><span style="color:#9ca3af">${task.deadline?formatDate(task.deadline):"Flexible"}</span></div><div><strong>Budget</strong><br><span style="color:#5b4bf8;font-weight:800;font-size:20px">₱${Number(task.budget).toLocaleString()}</span></div><div><strong>Status</strong><br><span class="status-badge ${statusClass(task.status)}">${capitalize(task.status)}</span></div></div></div>`;
+            document.getElementById("detailModal").classList.add("open");
+        }
+        document.getElementById("detailModal").addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
+        function markComplete(id){const acc=JSON.parse(localStorage.getItem("taskhero-accepted")||"[]");const idx=acc.findIndex(t=>t.id===id);if(idx!==-1){acc[idx].status="completed";localStorage.setItem("taskhero-accepted",JSON.stringify(acc));renderAccepted();showToast("Task marked as completed.","success");}}
+        function openDeleteModal(id,name){pendingDeleteId=id;document.getElementById("deleteTaskName").innerText=`"${name}"`;document.getElementById("deleteModal").classList.add("open");}
+        function closeDeleteModal(){document.getElementById("deleteModal").classList.remove("open");pendingDeleteId=null;}
+        function confirmDelete(){if(!pendingDeleteId)return;let tasks=JSON.parse(localStorage.getItem("taskhero-tasks")||"[]");tasks=tasks.filter(t=>t.id!==pendingDeleteId);localStorage.setItem("taskhero-tasks",JSON.stringify(tasks));closeDeleteModal();renderPosted();showToast("Task deleted.","info");}
+        document.getElementById("deleteModal").addEventListener("click",function(e){if(e.target===this)closeDeleteModal();});
+        function statusClass(s){return{open:"badge-open",accepted:"badge-accepted",completed:"badge-completed",cancelled:"badge-cancelled"}[s]||"badge-open";}
+        function capitalize(s){return s?s.charAt(0).toUpperCase()+s.slice(1):"";}
+        function formatDate(d){if(!d)return"";return new Date(d).toLocaleDateString("en-PH",{month:"short",day:"numeric"});}
+        function escHtml(str){return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+        function emptyState(icon,title,desc,btnLabel,btnAction){return`<div class="empty-state"><div class="empty-icon">${icon}</div><h3>${title}</h3><p>${desc}</p><button class="primary-button" onclick="${btnAction}">${btnLabel}</button></div>`;}
+        document.addEventListener("DOMContentLoaded",loadMyTasks);
+    </script>
+</body>
+</html>
