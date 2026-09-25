@@ -25,7 +25,10 @@ function postTask()  { requireAuth("post-task.html"); }
 function myTasks()   { requireAuth("my-task.html"); }
 function messages()  { requireAuth("messeges-page.html"); }
 function goBack()    { if (window.history.length > 1) window.history.back(); else goHome(); }
-function signOut()   { localStorage.removeItem("taskhero-user"); window.location.href = "home.html"; }
+function signOut() {
+    localStorage.removeItem("taskhero-user");
+    window.location.href = "auth.html";
+}
 
 /* =========================================================
    DARK / LIGHT MODE

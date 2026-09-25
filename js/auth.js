@@ -322,7 +322,7 @@ authForm.addEventListener("submit", async (e) => {
 window.__googleAuthStart = function () {
   inFlight = true;
   googleBtn.disabled = true;
-  googleBtn.innerHTML = `<span class="google-g" aria-hidden="true">G</span> Signing in…`;
+  googleBtn.innerHTML = `<span class="google-g" aria-hidden="true">G</span> Connecting to Google…`;
   hideGlobalError();
 };
 
@@ -344,9 +344,7 @@ googleBtn.addEventListener("click", () => {
     !window.GOOGLE_CLIENT_ID ||
     window.GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
   ) {
-    showGlobalError(
-      "Google sign-in is not configured. Add your Client ID to auth.html (window.GOOGLE_CLIENT_ID)."
-    );
+    showGlobalError("Google sign-in needs a Google OAuth Client ID. Add it to auth.html as window.GOOGLE_CLIENT_ID.");
     return;
   }
 
@@ -359,7 +357,7 @@ googleBtn.addEventListener("click", () => {
   }
 
   hideGlobalError();
-  // Show the One Tap popup. The callback is handleCredentialResponse (auth.html)
+  // The callback is handleCredentialResponse (auth.html) for both sign-in and sign-up.
   google.accounts.id.prompt((notification) => {
     if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
       // One Tap was suppressed (e.g. user dismissed too many times).
