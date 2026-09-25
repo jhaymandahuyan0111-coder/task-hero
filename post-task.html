@@ -276,24 +276,28 @@ body.dark-mode .success-overlay p { color: var(--text-sub); }
             btn.disabled = true;
             btn.innerText = "Posting…";
             const task = {
-                id: "task-" + Date.now(),
                 title: document.getElementById("taskTitle").value.trim(),
                 category: document.getElementById("taskCategory").value,
                 budget: Number(document.getElementById("taskBudget").value),
                 location: document.getElementById("taskLocation").value.trim(),
                 deadline: document.getElementById("taskDeadline").value,
                 description: document.getElementById("taskDescription").value.trim(),
-                status: "open",
                 postedBy: user.id,
-                postedAt: new Date().toISOString()
             };
-            const tasks = JSON.parse(localStorage.getItem("taskhero-tasks") || "[]");
-            tasks.unshift(task);
-            localStorage.setItem("taskhero-tasks", JSON.stringify(tasks));
-            setTimeout(() => {
+            fetch(`${window.TASKHERO_API_BASE}/tasks`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(task),
+            }).then(async response => {
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || (result.errors || []).join(" ") || "Unable to post task.");
                 document.getElementById("formCard").style.display = "none";
                 document.getElementById("successCard").classList.add("show");
-            }, 400);
+            }).catch(error => {
+                btn.disabled = false;
+                btn.innerText = "Post Task";
+                showToast(error.message, "error");
+            });
         }
         function postAnotherTask() {
             document.getElementById("postTaskForm").reset();

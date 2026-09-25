@@ -307,13 +307,18 @@ body.dark-mode .no-results h3 { color: var(--text); }
     <script>
         let allTasks = [], currentFilter = "all", pendingTask = null;
 
-        function loadTasks() {
-            const stored = JSON.parse(localStorage.getItem("taskhero-tasks") || "[]");
-            const user = currentUser();
-            // Filter out closed tasks AND tasks the current user posted (can't accept own)
-            allTasks = stored.filter(t => t.status === "open" && (!user || t.postedBy !== user.id));
-            renderTasks();
-            updateStats();
+        async function loadTasks() {
+            try {
+                const response = await fetch(`${window.TASKHERO_API_BASE}/tasks`);
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || "Unable to load tasks.");
+                const user = currentUser();
+                allTasks = result.data.filter(t => t.status === "open" && (!user || t.postedBy !== user.id));
+                renderTasks();
+                updateStats();
+            } catch (error) {
+                document.getElementById("taskGrid").innerHTML = `<div class="no-results"><h3>Unable to load tasks</h3><p>${escHtml(error.message)}</p></div>`;
+            }
         }
 
         function renderTasks() {
@@ -364,30 +369,40 @@ body.dark-mode .no-results h3 { color: var(--text); }
             pendingTask = null;
         }
 
-        function confirmAccept() {
+        async function confirmAccept() {
             if (!pendingTask) return;
-            const acc = JSON.parse(localStorage.getItem("taskhero-accepted") || "[]");
-            if (!acc.find(t => t.id === pendingTask.id)) {
-                acc.push({ ...pendingTask, acceptedAt: new Date().toISOString() });
-                localStorage.setItem("taskhero-accepted", JSON.stringify(acc));
+            const user = currentUser();
+            if (!user) return;
+            try {
+                const response = await fetch(`${window.TASKHERO_API_BASE}/tasks/${encodeURIComponent(pendingTask.id)}/accept`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ acceptedBy: user.id }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || "Unable to accept task.");
+                closeAcceptModal();
+                showToast(`Accepted: ${pendingTask.title}`, "success");
+                await loadTasks();
+            } catch (error) {
+                showToast(error.message, "error");
             }
-            closeAcceptModal();
-            showToast(`Accepted: ${pendingTask.title}`, "success");
-            allTasks = allTasks.filter(t => t.id !== pendingTask.id);
-            pendingTask = null;
-            renderTasks();
-            updateStats();
         }
 
         document.getElementById("acceptModal").addEventListener("click", function(e) { if (e.target === this) closeAcceptModal(); });
 
-        function updateStats() {
-            const acc = JSON.parse(localStorage.getItem("taskhero-accepted") || "[]");
-            const totalPaid = acc.reduce((s, t) => s + Number(t.budget || 0), 0);
-            document.getElementById("statOpen").innerText = allTasks.length;
-            document.getElementById("statCompleted").innerText = acc.filter(t => t.status === "completed").length;
-            document.getElementById("statUsers").innerText = "—";
-            document.getElementById("statPaid").innerText = "₱" + totalPaid.toLocaleString();
+        async function updateStats() {
+            try {
+                const response = await fetch(`${window.TASKHERO_API_BASE}/tasks/stats`);
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error("Unable to load stats.");
+                document.getElementById("statOpen").innerText = result.data.openTasks ?? allTasks.length;
+                document.getElementById("statCompleted").innerText = result.data.completedTasks ?? 0;
+                document.getElementById("statUsers").innerText = result.data.activeUsers ?? "—";
+                document.getElementById("statPaid").innerText = "₱" + Number(result.data.totalPaid || 0).toLocaleString();
+            } catch (_) {
+                document.getElementById("statOpen").innerText = allTasks.length;
+            }
         }
 
         function escHtml(str) { return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }

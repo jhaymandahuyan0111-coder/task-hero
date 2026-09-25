@@ -212,11 +212,27 @@ body.dark-mode .empty-state h3  { color: var(--text); }
             document.getElementById(tab + "Tab").classList.add("active");
         }
 
-        function loadMyTasks() { renderPosted(); renderAccepted(); }
+        async function loadMyTasks() {
+            const user = currentUser();
+            if (!user) return;
+            try {
+                const [postedResponse, acceptedResponse] = await Promise.all([
+                    fetch(`${window.TASKHERO_API_BASE}/tasks?postedBy=${encodeURIComponent(user.id)}`),
+                    fetch(`${window.TASKHERO_API_BASE}/tasks?acceptedBy=${encodeURIComponent(user.id)}`),
+                ]);
+                const posted = await postedResponse.json();
+                const accepted = await acceptedResponse.json();
+                if (!postedResponse.ok || !posted.success) throw new Error(posted.message || "Unable to load posted tasks.");
+                if (!acceptedResponse.ok || !accepted.success) throw new Error(accepted.message || "Unable to load accepted tasks.");
+                renderPosted(posted.data);
+                renderAccepted(accepted.data);
+            } catch (error) {
+                document.getElementById("postedList").innerHTML = emptyState("Unable to load tasks", error.message, "Retry", "loadMyTasks()");
+                document.getElementById("acceptedList").innerHTML = "";
+            }
+        }
 
-        function renderPosted() {
-            const user = JSON.parse(localStorage.getItem("taskhero-user") || "null");
-            const tasks = JSON.parse(localStorage.getItem("taskhero-tasks") || "[]").filter(t => user && t.postedBy === user.id);
+        function renderPosted(tasks = []) {
             const list = document.getElementById("postedList");
             if (!tasks.length) {
                 list.innerHTML = emptyState("No posted tasks yet", "Post a task and let the community help you out.", "Post a Task", "postTask()");
@@ -241,8 +257,7 @@ body.dark-mode .empty-state h3  { color: var(--text); }
                 </div>`).join("");
         }
 
-        function renderAccepted() {
-            const tasks = JSON.parse(localStorage.getItem("taskhero-accepted") || "[]");
+        function renderAccepted(tasks = []) {
             const list = document.getElementById("acceptedList");
             if (!tasks.length) {
                 list.innerHTML = emptyState("No accepted tasks yet", "Browse open tasks and accept one to get started.", "Browse Tasks", "goHome()");
@@ -267,11 +282,11 @@ body.dark-mode .empty-state h3  { color: var(--text); }
                 </div>`).join("");
         }
 
-        function viewTask(id, source) {
-            let task;
-            if (source === "posted") { const tasks = JSON.parse(localStorage.getItem("taskhero-tasks") || "[]"); task = tasks.find(t => t.id === id); }
-            else { const acc = JSON.parse(localStorage.getItem("taskhero-accepted") || "[]"); task = acc.find(t => t.id === id); }
-            if (!task) return;
+        async function viewTask(id) {
+            const response = await fetch(`${window.TASKHERO_API_BASE}/tasks/${encodeURIComponent(id)}`);
+            const result = await response.json();
+            if (!response.ok || !result.success) return;
+            const task = result.data;
             document.getElementById("detailTitle").innerText = task.title;
             document.getElementById("detailBody").innerHTML = `
                 <p style="color:var(--text-sub);font-size:13px;line-height:1.6;margin-bottom:16px">${escHtml(task.description)}</p>
@@ -286,10 +301,21 @@ body.dark-mode .empty-state h3  { color: var(--text); }
 
         document.getElementById("detailModal").addEventListener("click", function(e) { if (e.target === this) this.classList.remove("open"); });
 
-        function markComplete(id) {
-            const acc = JSON.parse(localStorage.getItem("taskhero-accepted") || "[]");
-            const idx = acc.findIndex(t => t.id === id);
-            if (idx !== -1) { acc[idx].status = "completed"; localStorage.setItem("taskhero-accepted", JSON.stringify(acc)); renderAccepted(); showToast("Task marked as completed.", "success"); }
+        async function markComplete(id) {
+            const user = currentUser();
+            try {
+                const response = await fetch(`${window.TASKHERO_API_BASE}/tasks/${encodeURIComponent(id)}/complete`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: user.id }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || "Unable to complete task.");
+                showToast("Task marked as completed.", "success");
+                await loadMyTasks();
+            } catch (error) {
+                showToast(error.message, "error");
+            }
         }
 
         function openDeleteModal(id, name) {
@@ -300,14 +326,18 @@ body.dark-mode .empty-state h3  { color: var(--text); }
 
         function closeDeleteModal() { document.getElementById("deleteModal").classList.remove("open"); pendingDeleteId = null; }
 
-        function confirmDelete() {
+        async function confirmDelete() {
             if (!pendingDeleteId) return;
-            let tasks = JSON.parse(localStorage.getItem("taskhero-tasks") || "[]");
-            tasks = tasks.filter(t => t.id !== pendingDeleteId);
-            localStorage.setItem("taskhero-tasks", JSON.stringify(tasks));
-            closeDeleteModal();
-            renderPosted();
-            showToast("Task deleted.", "info");
+            try {
+                const response = await fetch(`${window.TASKHERO_API_BASE}/tasks/${encodeURIComponent(pendingDeleteId)}`, { method: "DELETE" });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || "Unable to delete task.");
+                closeDeleteModal();
+                showToast("Task deleted.", "info");
+                await loadMyTasks();
+            } catch (error) {
+                showToast(error.message, "error");
+            }
         }
 
         document.getElementById("deleteModal").addEventListener("click", function(e) { if (e.target === this) closeDeleteModal(); });
