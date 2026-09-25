@@ -1,22 +1,645 @@
-/* In-memory store for the running development server. Data resets on restart. */
+/* =========================================================
+   TASKHERO - SQLite Database Layer
+   Uses better-sqlite3 (synchronous API — no async/await)
+   ========================================================= */
 
-const { v4: uuid } = require("uuid");
+const Database = require('better-sqlite3');
+const path     = require('path');
+const bcrypt   = require('bcryptjs');
+const crypto   = require('crypto');
 
-const users = [];
-const tasks = [];
-const conversations = [];
-const messages = [];
-const notifications = [];
+// ── Open / create the database file ──────────────────────
+const db = new Database(path.join(__dirname, 'taskhero.db'));
 
-function newId(prefix = "") {
-  return prefix + uuid();
+// Performance & integrity pragmas
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+// ── Schema ───────────────────────────────────────────────
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id             TEXT PRIMARY KEY,
+    name           TEXT NOT NULL,
+    email          TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password       TEXT NOT NULL,
+    avatar         TEXT NOT NULL DEFAULT '',
+    bio            TEXT DEFAULT '',
+    tagline        TEXT DEFAULT '',
+    location       TEXT DEFAULT '',
+    skills         TEXT DEFAULT '[]',
+    expertise      TEXT DEFAULT '[]',
+    certs          TEXT DEFAULT '[]',
+    portfolio      TEXT DEFAULT '[]',
+    workExp        TEXT DEFAULT '[]',
+    contact        TEXT DEFAULT '{}',
+    rating         REAL DEFAULT 0,
+    tasksCompleted INTEGER DEFAULT 0,
+    joinedAt       TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS tasks (
+    id          TEXT PRIMARY KEY,
+    title       TEXT NOT NULL,
+    category    TEXT NOT NULL,
+    budget      REAL NOT NULL,
+    location    TEXT NOT NULL,
+    deadline    TEXT,
+    description TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'open',
+    postedBy    TEXT NOT NULL REFERENCES users(id),
+    acceptedBy  TEXT REFERENCES users(id),
+    createdAt   TEXT NOT NULL,
+    updatedAt   TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS conversations (
+    id           TEXT PRIMARY KEY,
+    taskId       TEXT REFERENCES tasks(id),
+    participant1 TEXT NOT NULL REFERENCES users(id),
+    participant2 TEXT NOT NULL REFERENCES users(id),
+    createdAt    TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS messages (
+    id             TEXT PRIMARY KEY,
+    conversationId TEXT NOT NULL REFERENCES conversations(id),
+    senderId       TEXT NOT NULL REFERENCES users(id),
+    text           TEXT NOT NULL,
+    read           INTEGER NOT NULL DEFAULT 0,
+    createdAt      TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS notifications (
+    id        TEXT PRIMARY KEY,
+    userId    TEXT NOT NULL REFERENCES users(id),
+    icon      TEXT DEFAULT '',
+    text      TEXT NOT NULL,
+    read      INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS reviews (
+    id         TEXT PRIMARY KEY,
+    taskId     TEXT NOT NULL REFERENCES tasks(id),
+    reviewerId TEXT NOT NULL REFERENCES users(id),
+    revieweeId TEXT NOT NULL REFERENCES users(id),
+    stars      INTEGER NOT NULL CHECK(stars BETWEEN 1 AND 5),
+    text       TEXT NOT NULL,
+    createdAt  TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_tasks_postedBy    ON tasks(postedBy);
+  CREATE INDEX IF NOT EXISTS idx_tasks_status      ON tasks(status);
+  CREATE INDEX IF NOT EXISTS idx_messages_convId   ON messages(conversationId);
+  CREATE INDEX IF NOT EXISTS idx_notifs_userId     ON notifications(userId);
+  CREATE INDEX IF NOT EXISTS idx_reviews_revieweeId ON reviews(revieweeId);
+`);
+
+// ── JSON field helpers ────────────────────────────────────
+
+function parseJson(val, fallback) {
+  try { return JSON.parse(val); } catch { return fallback; }
 }
 
+/** Parse all JSON fields on a raw user row from SQLite */
+function parseUser(row) {
+  if (!row) return undefined;
+  return {
+    ...row,
+    skills:    parseJson(row.skills,    []),
+    expertise: parseJson(row.expertise, []),
+    certs:     parseJson(row.certs,     []),
+    portfolio: parseJson(row.portfolio, []),
+    workExp:   parseJson(row.workExp,   []),
+    contact:   parseJson(row.contact,   {}),
+  };
+}
+
+// ── Prepared statements ───────────────────────────────────
+
+// USERS
+const stmts = {
+  users: {
+    findAll:     db.prepare('SELECT * FROM users'),
+    findById:    db.prepare('SELECT * FROM users WHERE id = ?'),
+    findByEmail: db.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE'),
+    insert: db.prepare(`
+      INSERT INTO users
+        (id, name, email, password, avatar, bio, tagline, location,
+         skills, expertise, certs, portfolio, workExp, contact,
+         rating, tasksCompleted, joinedAt)
+      VALUES
+        (@id, @name, @email, @password, @avatar, @bio, @tagline, @location,
+         @skills, @expertise, @certs, @portfolio, @workExp, @contact,
+         @rating, @tasksCompleted, @joinedAt)
+    `),
+    avgRating: db.prepare(`
+      SELECT AVG(stars) as avg FROM reviews WHERE revieweeId = ?
+    `),
+    updateRating: db.prepare(`
+      UPDATE users SET rating = ? WHERE id = ?
+    `),
+    updateTasksCompleted: db.prepare(`
+      UPDATE users SET tasksCompleted = tasksCompleted + 1 WHERE id = ?
+    `),
+  },
+
+  tasks: {
+    findAll: db.prepare('SELECT * FROM tasks ORDER BY createdAt DESC'),
+    findById: db.prepare('SELECT * FROM tasks WHERE id = ?'),
+    countByStatus: db.prepare('SELECT status, COUNT(*) as cnt FROM tasks GROUP BY status'),
+    countUsers: db.prepare('SELECT COUNT(*) as c FROM users'),
+    sumCompleted: db.prepare(`SELECT SUM(budget) as total FROM tasks WHERE status = 'completed'`),
+    insert: db.prepare(`
+      INSERT INTO tasks
+        (id, title, category, budget, location, deadline, description,
+         status, postedBy, acceptedBy, createdAt, updatedAt)
+      VALUES
+        (@id, @title, @category, @budget, @location, @deadline, @description,
+         @status, @postedBy, @acceptedBy, @createdAt, @updatedAt)
+    `),
+    deleteById: db.prepare('DELETE FROM tasks WHERE id = ?'),
+  },
+
+  conversations: {
+    findByUser: db.prepare(`
+      SELECT * FROM conversations WHERE participant1 = ? OR participant2 = ?
+    `),
+    findById: db.prepare('SELECT * FROM conversations WHERE id = ?'),
+    findByPairAndTask: db.prepare(`
+      SELECT * FROM conversations
+      WHERE taskId IS @taskId
+        AND ((participant1 = @uid1 AND participant2 = @uid2)
+          OR (participant1 = @uid2 AND participant2 = @uid1))
+      LIMIT 1
+    `),
+    insert: db.prepare(`
+      INSERT INTO conversations (id, taskId, participant1, participant2, createdAt)
+      VALUES (@id, @taskId, @participant1, @participant2, @createdAt)
+    `),
+  },
+
+  messages: {
+    findByConv: db.prepare(`
+      SELECT * FROM messages WHERE conversationId = ? ORDER BY createdAt ASC
+    `),
+    insert: db.prepare(`
+      INSERT INTO messages (id, conversationId, senderId, text, read, createdAt)
+      VALUES (@id, @conversationId, @senderId, @text, @read, @createdAt)
+    `),
+    markRead: db.prepare(`
+      UPDATE messages SET read = 1
+      WHERE conversationId = ? AND senderId != ?
+    `),
+  },
+
+  notifications: {
+    findByUser: db.prepare(`
+      SELECT * FROM notifications WHERE userId = ? ORDER BY createdAt DESC
+    `),
+    insert: db.prepare(`
+      INSERT INTO notifications (id, userId, icon, text, read, createdAt)
+      VALUES (@id, @userId, @icon, @text, @read, @createdAt)
+    `),
+    markAllRead: db.prepare(`UPDATE notifications SET read = 1 WHERE userId = ?`),
+    markOneRead: db.prepare(`UPDATE notifications SET read = 1 WHERE id = ?`),
+    findById:    db.prepare('SELECT * FROM notifications WHERE id = ?'),
+  },
+
+  reviews: {
+    findByReviewee: db.prepare(`
+      SELECT * FROM reviews WHERE revieweeId = ? ORDER BY createdAt DESC
+    `),
+    findByReviewerAndTask: db.prepare(`
+      SELECT * FROM reviews WHERE reviewerId = ? AND taskId = ?
+    `),
+    insert: db.prepare(`
+      INSERT INTO reviews (id, taskId, reviewerId, revieweeId, stars, text, createdAt)
+      VALUES (@id, @taskId, @reviewerId, @revieweeId, @stars, @text, @createdAt)
+    `),
+  },
+};
+
+// ── Dynamic update builders ───────────────────────────────
+
+const ALLOWED_USER_FIELDS = [
+  'name', 'avatar', 'bio', 'tagline', 'location',
+  'skills', 'expertise', 'certs', 'portfolio', 'workExp', 'contact', 'banner',
+  'rating', 'tasksCompleted',
+];
+
+const ALLOWED_TASK_FIELDS = [
+  'title', 'category', 'budget', 'location', 'deadline',
+  'description', 'status', 'acceptedBy', 'updatedAt',
+];
+
+function buildUpdate(table, allowedFields, fields, id) {
+  const keys = Object.keys(fields).filter((k) => allowedFields.includes(k));
+  if (keys.length === 0) return null; // nothing to update
+  const setClauses = keys.map((k) => `${k} = @${k}`).join(', ');
+  return db.prepare(`UPDATE ${table} SET ${setClauses} WHERE id = @id`);
+}
+
+// ── Seed data ─────────────────────────────────────────────
+
+const seedCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
+
+if (seedCount === 0) {
+  const seedUsers = [
+    {
+      id:             'user-1',
+      name:           'Alex Johnson',
+      email:          'alex@example.com',
+      password:       bcrypt.hashSync('password123', 10),
+      avatar:         'A',
+      bio:            'Experienced freelancer ready to tackle any challenge.',
+      tagline:        'Full-Stack Developer & Designer',
+      location:       'New York, NY',
+      skills:         JSON.stringify(['JavaScript', 'React', 'Node.js', 'UI/UX']),
+      expertise:      JSON.stringify([{ name: 'Web Development', level: 'Expert' }, { name: 'Design', level: 'Intermediate' }]),
+      certs:          JSON.stringify([]),
+      portfolio:      JSON.stringify([]),
+      workExp:        JSON.stringify([]),
+      contact:        JSON.stringify({ email: 'alex@example.com', phone: '', web: '', linkedin: '', github: '' }),
+      rating:         4.8,
+      tasksCompleted: 23,
+      joinedAt:       new Date('2023-01-15').toISOString(),
+    },
+    {
+      id:             'user-2',
+      name:           'Maria Santos',
+      email:          'maria@example.com',
+      password:       bcrypt.hashSync('password123', 10),
+      avatar:         'M',
+      bio:            'Graphic designer with 5 years of experience.',
+      tagline:        'Creative Graphic Designer',
+      location:       'Miami, FL',
+      skills:         JSON.stringify(['Photoshop', 'Illustrator', 'Figma', 'Branding']),
+      expertise:      JSON.stringify([{ name: 'Graphic Design', level: 'Expert' }]),
+      certs:          JSON.stringify([]),
+      portfolio:      JSON.stringify([]),
+      workExp:        JSON.stringify([]),
+      contact:        JSON.stringify({ email: 'maria@example.com', phone: '', web: '', linkedin: '', github: '' }),
+      rating:         4.9,
+      tasksCompleted: 41,
+      joinedAt:       new Date('2023-02-20').toISOString(),
+    },
+    {
+      id:             'user-3',
+      name:           'David Kim',
+      email:          'david@example.com',
+      password:       bcrypt.hashSync('password123', 10),
+      avatar:         'D',
+      bio:            'IT specialist and computer repair expert.',
+      tagline:        'IT Support Specialist',
+      location:       'Los Angeles, CA',
+      skills:         JSON.stringify(['Hardware Repair', 'Networking', 'Windows', 'Linux']),
+      expertise:      JSON.stringify([{ name: 'IT Support', level: 'Expert' }]),
+      certs:          JSON.stringify([{ icon: '🏅', name: 'CompTIA A+', issuer: 'CompTIA', year: '2022' }]),
+      portfolio:      JSON.stringify([]),
+      workExp:        JSON.stringify([]),
+      contact:        JSON.stringify({ email: 'david@example.com', phone: '', web: '', linkedin: '', github: '' }),
+      rating:         4.7,
+      tasksCompleted: 18,
+      joinedAt:       new Date('2023-03-10').toISOString(),
+    },
+    {
+      id:             'user-4',
+      name:           'Sarah Williams',
+      email:          'sarah@example.com',
+      password:       bcrypt.hashSync('password123', 10),
+      avatar:         'S',
+      bio:            'Professional cleaner and organizer.',
+      tagline:        'Home Cleaning Professional',
+      location:       'Chicago, IL',
+      skills:         JSON.stringify(['Deep Cleaning', 'Organization', 'Eco Products']),
+      expertise:      JSON.stringify([{ name: 'Cleaning', level: 'Expert' }]),
+      certs:          JSON.stringify([]),
+      portfolio:      JSON.stringify([]),
+      workExp:        JSON.stringify([]),
+      contact:        JSON.stringify({ email: 'sarah@example.com', phone: '', web: '', linkedin: '', github: '' }),
+      rating:         5.0,
+      tasksCompleted: 67,
+      joinedAt:       new Date('2022-11-05').toISOString(),
+    },
+    {
+      id:             'user-5',
+      name:           'James Brown',
+      email:          'james@example.com',
+      password:       bcrypt.hashSync('password123', 10),
+      avatar:         'J',
+      bio:            'Delivery driver with own vehicle, fast and reliable.',
+      tagline:        'Delivery & Logistics Expert',
+      location:       'Houston, TX',
+      skills:         JSON.stringify(['Delivery', 'Logistics', 'Customer Service']),
+      expertise:      JSON.stringify([{ name: 'Delivery', level: 'Expert' }]),
+      certs:          JSON.stringify([]),
+      portfolio:      JSON.stringify([]),
+      workExp:        JSON.stringify([]),
+      contact:        JSON.stringify({ email: 'james@example.com', phone: '', web: '', linkedin: '', github: '' }),
+      rating:         4.6,
+      tasksCompleted: 30,
+      joinedAt:       new Date('2023-04-18').toISOString(),
+    },
+  ];
+
+  const insertUser = db.transaction((users) => {
+    for (const u of users) stmts.users.insert.run(u);
+  });
+  insertUser(seedUsers);
+
+  const now = new Date().toISOString();
+  const seedTasks = [
+    {
+      id:          'task-1',
+      title:       'Design a logo for my startup',
+      category:    'Graphic Design',
+      budget:      150,
+      location:    'Remote',
+      deadline:    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      description: 'I need a modern, clean logo for my new tech startup. Looking for something minimal and memorable.',
+      status:      'open',
+      postedBy:    'user-1',
+      acceptedBy:  null,
+      createdAt:   now,
+      updatedAt:   now,
+    },
+    {
+      id:          'task-2',
+      title:       'Fix my laptop — won\'t turn on',
+      category:    'Computer / IT',
+      budget:      80,
+      location:    'Los Angeles, CA',
+      deadline:    null,
+      description: 'My laptop suddenly stopped turning on. It was working fine yesterday. Need someone to diagnose and fix it.',
+      status:      'open',
+      postedBy:    'user-2',
+      acceptedBy:  null,
+      createdAt:   now,
+      updatedAt:   now,
+    },
+    {
+      id:          'task-3',
+      title:       'Deep clean 2-bedroom apartment',
+      category:    'Cleaning',
+      budget:      200,
+      location:    'Chicago, IL',
+      deadline:    new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      description: 'Need a thorough deep clean of my 2-bedroom apartment. Kitchen and bathrooms especially need attention.',
+      status:      'accepted',
+      postedBy:    'user-1',
+      acceptedBy:  'user-4',
+      createdAt:   now,
+      updatedAt:   now,
+    },
+    {
+      id:          'task-4',
+      title:       'Pick up groceries and deliver to my home',
+      category:    'Delivery',
+      budget:      30,
+      location:    'Houston, TX',
+      deadline:    null,
+      description: 'Need someone to pick up a grocery list from Whole Foods and deliver to my address. List will be provided.',
+      status:      'completed',
+      postedBy:    'user-3',
+      acceptedBy:  'user-5',
+      createdAt:   now,
+      updatedAt:   now,
+    },
+  ];
+
+  const insertTask = db.transaction((tasks) => {
+    for (const t of tasks) stmts.tasks.insert.run(t);
+  });
+  insertTask(seedTasks);
+}
+
+// ── Exported API ──────────────────────────────────────────
+
 module.exports = {
-  users,
-  tasks,
-  conversations,
-  messages,
-  notifications,
-  newId,
+  /** Generate a prefixed UUID */
+  newId(prefix = '') {
+    return prefix + crypto.randomUUID();
+  },
+
+  /** Expose the raw db instance for advanced use */
+  _db: db,
+
+  // ── USERS ───────────────────────────────────────────────
+  users: {
+    findAll() {
+      return stmts.users.findAll.all().map(parseUser);
+    },
+
+    findById(id) {
+      return parseUser(stmts.users.findById.get(id));
+    },
+
+    findByEmail(email) {
+      return parseUser(stmts.users.findByEmail.get(email));
+    },
+
+    create(user) {
+      const row = {
+        id:             user.id,
+        name:           user.name,
+        email:          user.email,
+        password:       user.password,
+        avatar:         user.avatar  || '',
+        bio:            user.bio     || '',
+        tagline:        user.tagline || '',
+        location:       user.location || '',
+        skills:         JSON.stringify(user.skills    || []),
+        expertise:      JSON.stringify(user.expertise || []),
+        certs:          JSON.stringify(user.certs     || []),
+        portfolio:      JSON.stringify(user.portfolio || []),
+        workExp:        JSON.stringify(user.workExp   || []),
+        contact:        JSON.stringify(user.contact   || {}),
+        rating:         user.rating         || 0,
+        tasksCompleted: user.tasksCompleted || 0,
+        joinedAt:       user.joinedAt,
+      };
+      stmts.users.insert.run(row);
+      return this.findById(user.id);
+    },
+
+    update(id, fields) {
+      // Stringify JSON fields if present
+      const toSave = { ...fields };
+      for (const jsonField of ['skills', 'expertise', 'certs', 'portfolio', 'workExp', 'contact']) {
+        if (toSave[jsonField] !== undefined && typeof toSave[jsonField] !== 'string') {
+          toSave[jsonField] = JSON.stringify(toSave[jsonField]);
+        }
+      }
+
+      const stmt = buildUpdate('users', ALLOWED_USER_FIELDS, toSave, id);
+      if (stmt) {
+        stmt.run({ ...toSave, id });
+      }
+      return this.findById(id);
+    },
+
+    updateRating(id) {
+      const row = stmts.users.avgRating.get(id);
+      const avg = row && row.avg != null ? Math.round(row.avg * 10) / 10 : 0;
+      stmts.users.updateRating.run(avg, id);
+    },
+
+    incrementTasksCompleted(id) {
+      stmts.users.updateTasksCompleted.run(id);
+    },
+  },
+
+  // ── TASKS ───────────────────────────────────────────────
+  tasks: {
+    findAll(filters = {}) {
+      let rows = stmts.tasks.findAll.all();
+
+      if (filters.category) {
+        rows = rows.filter(
+          (t) => t.category.toLowerCase() === filters.category.toLowerCase()
+        );
+      }
+      if (filters.status) {
+        rows = rows.filter((t) => t.status === filters.status);
+      }
+      if (filters.postedBy) {
+        rows = rows.filter((t) => t.postedBy === filters.postedBy);
+      }
+      if (filters.acceptedBy) {
+        rows = rows.filter((t) => t.acceptedBy === filters.acceptedBy);
+      }
+      if (filters.search) {
+        const q = filters.search.toLowerCase();
+        rows = rows.filter(
+          (t) =>
+            t.title.toLowerCase().includes(q) ||
+            t.description.toLowerCase().includes(q) ||
+            t.location.toLowerCase().includes(q) ||
+            t.category.toLowerCase().includes(q)
+        );
+      }
+
+      return rows;
+    },
+
+    findById(id) {
+      return stmts.tasks.findById.get(id) || undefined;
+    },
+
+    stats() {
+      const rows = stmts.tasks.countByStatus.all();
+      const byStatus = {};
+      for (const r of rows) byStatus[r.status] = r.cnt;
+
+      const paidRow  = stmts.tasks.sumCompleted.get();
+      const userRow  = stmts.tasks.countUsers.get();
+
+      return {
+        openTasks:      byStatus['open']      || 0,
+        acceptedTasks:  byStatus['accepted']  || 0,
+        completedTasks: byStatus['completed'] || 0,
+        activeUsers:    userRow.c,
+        totalPaid:      paidRow.total || 0,
+      };
+    },
+
+    create(task) {
+      stmts.tasks.insert.run(task);
+      return this.findById(task.id);
+    },
+
+    update(id, fields) {
+      const toSave = { ...fields };
+      const stmt = buildUpdate('tasks', ALLOWED_TASK_FIELDS, toSave, id);
+      if (stmt) {
+        stmt.run({ ...toSave, id });
+      }
+      return this.findById(id);
+    },
+
+    delete(id) {
+      stmts.tasks.deleteById.run(id);
+      return { deleted: true };
+    },
+  },
+
+  // ── CONVERSATIONS ────────────────────────────────────────
+  conversations: {
+    findByUser(userId) {
+      return stmts.conversations.findByUser.all(userId, userId);
+    },
+
+    findById(id) {
+      return stmts.conversations.findById.get(id) || undefined;
+    },
+
+    findByPairAndTask(uid1, uid2, taskId) {
+      return stmts.conversations.findByPairAndTask.get({
+        uid1, uid2, taskId: taskId || null,
+      }) || undefined;
+    },
+
+    create(conv) {
+      stmts.conversations.insert.run(conv);
+      return this.findById(conv.id);
+    },
+  },
+
+  // ── MESSAGES ─────────────────────────────────────────────
+  messages: {
+    findByConversation(convId) {
+      return stmts.messages.findByConv.all(convId);
+    },
+
+    create(msg) {
+      stmts.messages.insert.run(msg);
+      return stmts.messages.findByConv.all(msg.conversationId).find(
+        (m) => m.id === msg.id
+      );
+    },
+
+    markRead(convId, userId) {
+      stmts.messages.markRead.run(convId, userId);
+    },
+  },
+
+  // ── NOTIFICATIONS ────────────────────────────────────────
+  notifications: {
+    findByUser(userId) {
+      return stmts.notifications.findByUser.all(userId);
+    },
+
+    create(notif) {
+      stmts.notifications.insert.run(notif);
+    },
+
+    markAllRead(userId) {
+      stmts.notifications.markAllRead.run(userId);
+    },
+
+    markOneRead(id) {
+      stmts.notifications.markOneRead.run(id);
+      return stmts.notifications.findById.get(id);
+    },
+  },
+
+  // ── REVIEWS ──────────────────────────────────────────────
+  reviews: {
+    findByReviewee(userId) {
+      return stmts.reviews.findByReviewee.all(userId);
+    },
+
+    findByReviewerAndTask(reviewerId, taskId) {
+      return stmts.reviews.findByReviewerAndTask.get(reviewerId, taskId);
+    },
+
+    create(review) {
+      stmts.reviews.insert.run(review);
+      // Recalculate reviewee's avg rating
+      module.exports.users.updateRating(review.revieweeId);
+      return review;
+    },
+  },
 };

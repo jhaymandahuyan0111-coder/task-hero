@@ -15,27 +15,23 @@ const db      = require("../db");
 router.get("/conversations/:userId", (req, res) => {
   const { userId } = req.params;
 
-  const userConvos = db.conversations.filter((c) =>
-    c.participants.includes(userId)
-  );
+  const userConvos = db.conversations.findByUser(userId);
 
   const result = userConvos.map((conv) => {
     // Messages in this conversation
-    const convMessages = db.messages
-      .filter((m) => m.conversationId === conv.id)
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    const convMessages = db.messages.findByConversation(conv.id);
 
-    const lastMsg  = convMessages.at(-1) || null;
-    const unread   = convMessages.filter(
+    const lastMsg = convMessages.at(-1) || null;
+    const unread  = convMessages.filter(
       (m) => m.senderId !== userId && !m.read
     ).length;
 
     // Get the other participant's info
-    const otherId = conv.participants.find((p) => p !== userId);
-    const other   = db.users.find((u) => u.id === otherId);
+    const otherId = conv.participant1 === userId ? conv.participant2 : conv.participant1;
+    const other   = db.users.findById(otherId);
 
     // Get the related task
-    const task = db.tasks.find((t) => t.id === conv.taskId);
+    const task = conv.taskId ? db.tasks.findById(conv.taskId) : null;
 
     return {
       conversationId: conv.id,
@@ -45,8 +41,8 @@ router.get("/conversations/:userId", (req, res) => {
       participant: other
         ? { id: other.id, name: other.name, avatar: other.avatar }
         : { id: otherId, name: "Unknown", avatar: "?" },
-      lastMessage:    lastMsg ? lastMsg.text : null,
-      lastMessageAt:  lastMsg ? lastMsg.createdAt : conv.createdAt,
+      lastMessage:   lastMsg ? lastMsg.text : null,
+      lastMessageAt: lastMsg ? lastMsg.createdAt : conv.createdAt,
       unread,
     };
   });
@@ -67,33 +63,31 @@ router.get("/conversations/:userId", (req, res) => {
 router.get("/conversations/:userId/:conversationId", (req, res) => {
   const { userId, conversationId } = req.params;
 
-  const conv = db.conversations.find((c) => c.id === conversationId);
+  const conv = db.conversations.findById(conversationId);
 
   if (!conv) {
     return res.status(404).json({ success: false, message: "Conversation not found." });
   }
 
-  if (!conv.participants.includes(userId)) {
+  if (conv.participant1 !== userId && conv.participant2 !== userId) {
     return res.status(403).json({
       success: false,
       message: "You are not a participant in this conversation.",
     });
   }
 
-  // Get messages and mark them as read
-  const convMessages = db.messages
-    .filter((m) => m.conversationId === conversationId)
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  // Mark incoming messages as read
+  db.messages.markRead(conversationId, userId);
 
-  convMessages.forEach((m) => {
-    if (m.senderId !== userId) m.read = true;
-  });
+  // Fetch messages (already sorted ASC by createdAt)
+  const convMessages = db.messages.findByConversation(conversationId);
 
-  // Attach sender name to each message
+  // Attach sender info to each message
   const withSender = convMessages.map((m) => {
-    const sender = db.users.find((u) => u.id === m.senderId);
+    const sender = db.users.findById(m.senderId);
     return {
       ...m,
+      read:         Boolean(m.read),
       senderName:   sender ? sender.name : "Unknown",
       senderAvatar: sender ? sender.avatar : "?",
       isMe:         m.senderId === userId,
@@ -121,13 +115,13 @@ router.post("/", (req, res) => {
   }
 
   // Check conversation exists
-  const conv = db.conversations.find((c) => c.id === conversationId);
+  const conv = db.conversations.findById(conversationId);
   if (!conv) {
     return res.status(404).json({ success: false, message: "Conversation not found." });
   }
 
   // Check sender is a participant
-  if (!conv.participants.includes(senderId)) {
+  if (conv.participant1 !== senderId && conv.participant2 !== senderId) {
     return res.status(403).json({
       success: false,
       message: "You are not a participant in this conversation.",
@@ -135,33 +129,34 @@ router.post("/", (req, res) => {
   }
 
   // Check sender exists
-  const sender = db.users.find((u) => u.id === senderId);
+  const sender = db.users.findById(senderId);
   if (!sender) {
     return res.status(400).json({ success: false, message: "Sender not found." });
   }
 
+  const now     = new Date().toISOString();
   const message = {
     id:             db.newId("msg-"),
     conversationId,
     senderId,
     text:           text.trim(),
-    read:           false,
-    createdAt:      new Date().toISOString(),
+    read:           0,
+    createdAt:      now,
   };
 
-  db.messages.push(message);
+  db.messages.create(message);
 
   // Notify the other participant
-  const recipientId = conv.participants.find((p) => p !== senderId);
+  const recipientId = conv.participant1 === senderId ? conv.participant2 : conv.participant1;
   if (recipientId) {
-    const task = db.tasks.find((t) => t.id === conv.taskId);
-    db.notifications.unshift({
+    const task = conv.taskId ? db.tasks.findById(conv.taskId) : null;
+    db.notifications.create({
       id:        db.newId("notif-"),
       userId:    recipientId,
       icon:      "💬",
       text:      `${sender.name} sent you a message${task ? ` about "${task.title}"` : ""}.`,
-      read:      false,
-      createdAt: new Date().toISOString(),
+      read:      0,
+      createdAt: now,
     });
   }
 
@@ -169,6 +164,7 @@ router.post("/", (req, res) => {
     success: true,
     data: {
       ...message,
+      read:         false,
       senderName:   sender.name,
       senderAvatar: sender.avatar,
       isMe:         true,
@@ -180,7 +176,7 @@ router.post("/", (req, res) => {
    POST /api/messages/conversations
    Start a new conversation.
 
-   Body: { taskId, initiatorId, recipientId }
+   Body: { taskId?, initiatorId, recipientId }
    ───────────────────────────────────────────────────────── */
 router.post("/conversations", (req, res) => {
   const { taskId, initiatorId, recipientId } = req.body;
@@ -200,40 +196,35 @@ router.post("/conversations", (req, res) => {
   }
 
   // A task is optional for direct user conversations.
-  const task = taskId ? db.tasks.find((t) => t.id === taskId) : null;
+  const task = taskId ? db.tasks.findById(taskId) : null;
   if (taskId && !task) {
     return res.status(404).json({ success: false, message: "Task not found." });
   }
 
   // Check both users exist
-  const initiator = db.users.find((u) => u.id === initiatorId);
-  const recipient = db.users.find((u) => u.id === recipientId);
+  const initiator = db.users.findById(initiatorId);
+  const recipient = db.users.findById(recipientId);
   if (!initiator || !recipient) {
     return res.status(400).json({ success: false, message: "One or both users not found." });
   }
 
   // Check if conversation already exists for this task + pair
-  const existing = db.conversations.find(
-    (c) =>
-      c.taskId === (taskId || null) &&
-      c.participants.includes(initiatorId) &&
-      c.participants.includes(recipientId)
-  );
-
+  const existing = db.conversations.findByPairAndTask(initiatorId, recipientId, taskId || null);
   if (existing) {
     return res.json({ success: true, data: existing, existing: true });
   }
 
   const conv = {
     id:           db.newId("conv-"),
-    taskId,
-    participants: [initiatorId, recipientId],
+    taskId:       taskId || null,
+    participant1: initiatorId,
+    participant2: recipientId,
     createdAt:    new Date().toISOString(),
   };
 
-  db.conversations.push(conv);
+  const created = db.conversations.create(conv);
 
-  res.status(201).json({ success: true, data: conv });
+  res.status(201).json({ success: true, data: created });
 });
 
 module.exports = router;

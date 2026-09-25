@@ -35,6 +35,10 @@
      GET    /api/notifications/:userId              Get notifications
      PATCH  /api/notifications/:userId/read-all     Mark all read
      PATCH  /api/notifications/:id/read             Mark one read
+
+   REVIEWS
+     POST   /api/reviews                            Create a review
+     GET    /api/reviews/:userId                    Get reviews for a user
    ========================================================= */
 
 const express       = require("express");
@@ -45,6 +49,7 @@ const taskRoutes         = require("./routes/tasks");
 const userRoutes         = require("./routes/users");
 const messageRoutes      = require("./routes/messages");
 const notificationRoutes = require("./routes/notifications");
+const reviewRoutes       = require("./routes/reviews");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -53,10 +58,15 @@ const PORT = process.env.PORT || 3000;
    MIDDLEWARE
    ───────────────────────────────────────────────────────── */
 
-// CORS — allows the frontend (opened via file:// or localhost) to call the API
+// CORS — allow the frontend when opened from file:// or any local dev server port.
 app.use(cors({
-  origin: ["http://localhost:5500", "http://127.0.0.1:5500", "null"],
-  methods: ["GET", "POST", "PATCH", "DELETE"],
+  origin(origin, callback) {
+    if (!origin || origin === "null" || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Origin is not allowed by CORS."));
+  },
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
@@ -82,6 +92,7 @@ app.use("/api/tasks",         taskRoutes);
 app.use("/api/users",         userRoutes);
 app.use("/api/messages",      messageRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/reviews",       reviewRoutes);
 
 /* ─────────────────────────────────────────────────────────
    HEALTH CHECK
@@ -113,6 +124,21 @@ app.get("*", (req, res) => {
    ───────────────────────────────────────────────────────── */
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err.message);
+
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({
+      success: false,
+      message: "Request body contains invalid JSON.",
+    });
+  }
+
+  if (err.message === "Origin is not allowed by CORS.") {
+    return res.status(403).json({
+      success: false,
+      message: "Request origin is not allowed.",
+    });
+  }
+
   res.status(500).json({
     success: false,
     message: "Internal server error.",
@@ -124,12 +150,14 @@ app.use((err, req, res, next) => {
    START SERVER
    ───────────────────────────────────────────────────────── */
 app.listen(PORT, () => {
+  const dbPath = require("path").join(__dirname, "taskhero.db");
   console.log("");
   console.log("  🚀  TaskHero API is running!");
   console.log("  ─────────────────────────────────────────");
-  console.log(`  Local:   http://localhost:${PORT}`);
-  console.log(`  API:     http://localhost:${PORT}/api/tasks`);
-  console.log(`  Health:  http://localhost:${PORT}/api/health`);
+  console.log(`  Local:    http://localhost:${PORT}`);
+  console.log(`  API:      http://localhost:${PORT}/api/tasks`);
+  console.log(`  Health:   http://localhost:${PORT}/api/health`);
+  console.log(`  Database: ${dbPath}`);
   console.log("  ─────────────────────────────────────────");
   console.log("  Press Ctrl+C to stop.\n");
 });

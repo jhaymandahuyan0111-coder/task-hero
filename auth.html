@@ -1,68 +1,476 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskHero - Sign in</title>
-    <link rel="stylesheet" href="css/style.css">
-    <style>
-        body { background: #f7fcf9; color: #091413; }
-        body::before { display: none; }
-        .auth-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-        .auth-card { width: min(100%, 430px); padding: 36px; background: #fff; border: 1px solid #b0e4cc; border-radius: 12px; box-shadow: 0 14px 36px rgba(9,20,19,.1); }
-        .auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 34px; font-weight: 800; font-size: 20px; }
-        .auth-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 8px; background: #091413; color: #fff; }
-        .auth-card h1 { margin-bottom: 8px; font-size: 32px; letter-spacing: -.04em; }
-        .auth-subtitle { margin-bottom: 26px; color: #285a48; font-size: 14px; line-height: 1.5; }
-        .auth-form { display: grid; gap: 16px; }
-        .auth-field { display: grid; gap: 7px; }
-        .auth-field label { font-size: 13px; font-weight: 700; }
-        .auth-field input { width: 100%; padding: 12px 13px; border: 1px solid #b0e4cc; border-radius: 6px; background: #f7fcf9; color: #091413; font: inherit; }
-        .auth-field input:focus { outline: 3px solid rgba(64,138,113,.18); border-color: #408a71; }
-        .auth-submit { margin-top: 4px; padding: 12px; border: 0; border-radius: 6px; background: #408a71; color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
-        .auth-submit:hover { background: #285a48; }
-        .auth-submit:disabled { cursor: wait; opacity: .7; }
-        .auth-divider { display: flex; align-items: center; gap: 12px; margin: 20px 0; color: #6b7478; font-size: 12px; }
-        .auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: #b0e4cc; }
-        .google-button { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 11px 12px; border: 1px solid #b0e4cc; border-radius: 6px; background: #fff; color: #091413; font: inherit; font-weight: 700; cursor: pointer; }
-        .google-button:hover { background: #f3faf6; border-color: #408a71; }
-        .google-mark { display: grid; place-items: center; width: 20px; height: 20px; border: 2px solid #408a71; border-radius: 50%; color: #285a48; font-size: 12px; font-weight: 800; }
-        .auth-error { min-height: 18px; color: #a52e2e; font-size: 13px; }
-        .auth-switch { margin-top: 22px; text-align: center; color: #285a48; font-size: 13px; }
-        .auth-switch button { border: 0; padding: 0; background: none; color: #285a48; font: inherit; font-weight: 800; cursor: pointer; text-decoration: underline; }
-        .auth-return { display: block; margin: 18px auto 0; border: 0; background: none; color: #285a48; font: inherit; font-size: 13px; cursor: pointer; }
-        @media (max-width: 480px) { .auth-shell { padding: 16px; } .auth-card { padding: 28px 22px; } }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TaskHero — Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:    #5b4bf8;
+      --primary-hov:#4535d4;
+      --surface:    #f8f8fb;
+      --bg:         #f4f4f8;
+      --card:       #ffffff;
+      --border:     #e5e5ea;
+      --text:       #111118;
+      --text-sub:   #6b6b80;
+      --danger:     #dc2626;
+      --shadow:     0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60%  { transform: translateX(-5px); }
+      40%, 80%  { transform: translateX(5px); }
+    }
+
+    /* ── LAYOUT ────────────────────────────────────────── */
+    .auth-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+    }
+
+    /* ── CARD ──────────────────────────────────────────── */
+    .auth-card {
+      width: 100%;
+      max-width: 400px;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 36px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      animation: fadeUp 0.2s ease both;
+    }
+
+    /* Logo */
+    .card-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+    .card-logo-icon {
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--primary);
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      color: white;
+    }
+
+    /* Heading */
+    .card-heading {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .card-subtitle {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* Fields */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .field-group.hidden { display: none; }
+
+    .field-group label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .field-wrap { position: relative; }
+
+    .field-wrap input {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      height: 42px;
+    }
+    .field-wrap input::placeholder { color: #aaaabc; }
+    .field-wrap input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(91,75,248,0.1);
+    }
+    .field-wrap input.has-toggle { padding-right: 44px; }
+
+    .pw-toggle {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      color: var(--text-sub);
+      transition: color 0.15s;
+    }
+    .pw-toggle:hover { color: var(--primary); }
+
+    .field-error {
+      font-size: 12px;
+      color: var(--danger);
+      min-height: 16px;
+      display: none;
+    }
+    .field-error.visible { display: block; }
+
+    .forgot-link {
+      font-size: 12px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      display: block;
+      text-align: right;
+      margin-top: 4px;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .auth-error {
+      min-height: 20px;
+      font-size: 13px;
+      color: var(--danger);
+      margin-bottom: 12px;
+      display: none;
+      line-height: 1.4;
+    }
+    .auth-error.visible { display: block; }
+    .auth-error.shake   { animation: shake 0.35s ease; }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%;
+      padding: 0 18px;
+      height: 42px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 18px;
+    }
+    .submit-btn:hover:not(:disabled) { background: var(--primary-hov); }
+    .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Divider */
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--text-sub);
+      font-size: 12px;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* Google */
+    .google-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      height: 42px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      margin-bottom: 20px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .google-btn:hover {
+      border-color: var(--primary);
+      background: var(--surface);
+    }
+    .google-g {
+      width: 20px; height: 20px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    /* Switch */
+    .auth-switch {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-sub);
+    }
+    .auth-switch button {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+    }
+    .auth-switch button:hover { text-decoration: underline; }
+
+    /* ── DARK MODE ─────────────────────────────────────── */
+    body.dark-mode {
+      --bg:      #0f0f13;
+      --card:    #18181f;
+      --border:  #2a2a35;
+      --text:    #f0f0f5;
+      --text-sub:#8888a0;
+      --surface: #1e1e28;
+      background: var(--bg);
+    }
+    body.dark-mode .auth-card {
+      background: var(--card);
+      border-color: var(--border);
+    }
+    body.dark-mode .card-logo,
+    body.dark-mode .card-heading { color: var(--text); }
+    body.dark-mode .card-subtitle { color: var(--text-sub); }
+    body.dark-mode .field-group label { color: var(--text); }
+    body.dark-mode .field-wrap input {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    body.dark-mode .field-wrap input::placeholder { color: #555568; }
+    body.dark-mode .google-btn {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text);
+    }
+    body.dark-mode .google-btn:hover { border-color: var(--primary); }
+    body.dark-mode .auth-switch { color: var(--text-sub); }
+    body.dark-mode .auth-divider { color: var(--text-sub); }
+    body.dark-mode .auth-divider::before,
+    body.dark-mode .auth-divider::after { background: var(--border); }
+
+    @media (max-width: 480px) {
+      .auth-card { padding: 28px 20px; }
+    }
+  </style>
 </head>
 <body>
-    <main class="auth-shell">
-        <section class="auth-card" aria-labelledby="authTitle">
-            <div class="auth-brand"><span class="auth-mark">T</span> TaskHero</div>
-            <h1 id="authTitle">Sign in</h1>
-            <p class="auth-subtitle" id="authSubtitle">Sign in to manage tasks and message people directly.</p>
-            <form class="auth-form" id="authForm">
-                <div class="auth-field" id="nameField" hidden>
-                    <label for="name">Full name</label>
-                    <input id="name" name="name" type="text" autocomplete="name">
-                </div>
-                <div class="auth-field">
-                    <label for="email">Email address</label>
-                    <input id="email" name="email" type="email" autocomplete="email" required>
-                </div>
-                <div class="auth-field">
-                    <label for="password">Password</label>
-                    <input id="password" name="password" type="password" minlength="6" autocomplete="current-password" required>
-                </div>
-                <p class="auth-error" id="authError" role="alert"></p>
-                <button class="auth-submit" id="authSubmit" type="submit">Sign in</button>
-            </form>
-            <div class="auth-divider">or</div>
-            <button class="google-button" id="googleButton" type="button"><span class="google-mark">G</span> Continue with Google</button>
-            <p class="auth-error" id="googleError" role="status"></p>
-            <p class="auth-switch"><span id="switchPrompt">New to TaskHero?</span> <button type="button" id="switchMode">Create an account</button></p>
-            <button class="auth-return" type="button" onclick="window.location.href='home.html'">← Return to browse</button>
-        </section>
-    </main>
-    <script src="js/auth.js"></script>
+  <div class="auth-shell" id="authShell">
+    <section class="auth-card" aria-labelledby="authHeading" role="main">
+
+      <!-- Logo -->
+      <div class="card-logo">
+        <span class="card-logo-icon" id="adminTrigger" aria-hidden="true" style="cursor:default;user-select:none">T</span>
+        TaskHero
+      </div>
+
+      <!-- Heading -->
+      <h1 class="card-heading" id="authHeading">Welcome back</h1>
+      <p class="card-subtitle" id="authSubtitle">Sign in to manage your tasks and connect with others.</p>
+
+      <!-- Form -->
+      <form class="auth-form" id="authForm" novalidate>
+
+        <!-- Full Name (signup only) -->
+        <div class="field-group hidden" id="nameField">
+          <label for="nameInput">Full Name</label>
+          <div class="field-wrap">
+            <input type="text" id="nameInput" name="name" autocomplete="name" placeholder="Maria Santos" aria-describedby="nameError" />
+          </div>
+          <span class="field-error" id="nameError" role="alert" aria-live="polite"></span>
+        </div>
+
+        <!-- Email -->
+        <div class="field-group" id="emailField">
+          <label for="emailInput">Email address</label>
+          <div class="field-wrap">
+            <input type="email" id="emailInput" name="email" autocomplete="email" placeholder="you@example.com" required aria-describedby="emailError" />
+          </div>
+          <span class="field-error" id="emailError" role="alert" aria-live="polite"></span>
+        </div>
+
+        <!-- Password -->
+        <div class="field-group" id="passwordField">
+          <label for="passwordInput">Password</label>
+          <div class="field-wrap">
+            <input type="password" id="passwordInput" name="password" autocomplete="current-password" placeholder="Min. 6 characters" required minlength="6" class="has-toggle" aria-describedby="passwordError" />
+            <button type="button" class="pw-toggle" id="pwToggle1" aria-label="Show password">👁</button>
+          </div>
+          <span class="field-error" id="passwordError" role="alert" aria-live="polite"></span>
+          <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
+        </div>
+
+        <!-- Confirm Password (signup only) -->
+        <div class="field-group hidden" id="confirmField">
+          <label for="confirmInput">Confirm Password</label>
+          <div class="field-wrap">
+            <input type="password" id="confirmInput" name="confirmPassword" autocomplete="new-password" placeholder="Repeat your password" class="has-toggle" aria-describedby="confirmError" />
+            <button type="button" class="pw-toggle" id="pwToggle2" aria-label="Show confirm password">👁</button>
+          </div>
+          <span class="field-error" id="confirmError" role="alert" aria-live="polite"></span>
+        </div>
+
+        <!-- Global error -->
+        <div class="auth-error" id="authError" role="alert" aria-live="assertive"></div>
+
+        <!-- Submit -->
+        <button type="submit" class="submit-btn" id="submitBtn">Sign in</button>
+
+      </form>
+
+      <!-- Divider -->
+      <div class="auth-divider">or continue with</div>
+
+      <!-- Google -->
+      <button type="button" class="google-btn" id="googleBtn" aria-label="Continue with Google">
+        <span class="google-g" aria-hidden="true">G</span>
+        Continue with Google
+      </button>
+
+      <!-- Switch mode -->
+      <p class="auth-switch" id="switchLine">
+        Don't have an account?
+        <button type="button" id="switchBtn">Create account</button>
+      </p>
+
+    </section>
+  </div>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    /**
+     * ── GOOGLE SIGN-IN SETUP ─────────────────────────────────
+     * Replace GOOGLE_CLIENT_ID below with your OAuth 2.0 client
+     * ID from https://console.cloud.google.com/
+     * (APIs & Services → Credentials → Web application)
+     *
+     * Authorised JavaScript origins must include:
+     *   http://localhost   (or whatever host you serve from)
+     */
+    window.GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+
+    /**
+     * Called by the GSI library when the user picks a Google
+     * account. The credential field is a signed JWT from Google.
+     * We decode it client-side to get name/email/sub/picture,
+     * then let the backend upsert the user.
+     */
+    window.handleCredentialResponse = async function (response) {
+      const googleJwt = response.credential;
+
+      // Decode JWT payload (base64url, middle section)
+      let payload;
+      try {
+        const base64 = googleJwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        payload = JSON.parse(atob(base64));
+      } catch {
+        window.__googleAuthError("Failed to read Google credentials. Please try again.");
+        return;
+      }
+
+      const { sub: googleId, email, name, picture: avatar } = payload;
+
+      if (!email || !googleId) {
+        window.__googleAuthError("Google did not return a valid email. Please try again.");
+        return;
+      }
+
+      window.__googleAuthStart();
+
+      try {
+        const res    = await fetch("http://localhost:3000/api/users/google", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ name, email, googleId, avatar }),
+        });
+        const result = await res.json();
+
+        if (!res.ok || !result.success) {
+          throw new Error(result.message || "Google sign-in failed.");
+        }
+
+        // Mirror the email/password success flow
+        localStorage.setItem("taskhero-user", JSON.stringify(result.data));
+        window.__googleAuthSuccess();
+
+        setTimeout(() => {
+          const p = new URLSearchParams(window.location.search);
+          window.location.href = p.get("returnTo") || "home.html";
+        }, 350);
+
+      } catch (err) {
+        const isOffline =
+          err instanceof TypeError && err.message.toLowerCase().includes("fetch");
+        window.__googleAuthError(
+          isOffline
+            ? "The TaskHero server is offline. Make sure the backend is running."
+            : err.message
+        );
+      }
+    };
+
+    // Initialise GSI once the library has loaded
+    window.addEventListener("load", function () {
+      if (!window.google || !window.google.accounts) return;
+      google.accounts.id.initialize({
+        client_id:              window.GOOGLE_CLIENT_ID,
+        callback:               window.handleCredentialResponse,
+        auto_select:            false,
+        cancel_on_tap_outside:  true,
+      });
+    });
+  </script>
+  <script src="js/auth.js"></script>
 </body>
 </html>

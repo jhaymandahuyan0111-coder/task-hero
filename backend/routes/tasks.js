@@ -23,46 +23,19 @@ const VALID_CATEGORIES = [
 
 /* ─────────────────────────────────────────────────────────
    GET /api/tasks
-   Returns all open tasks (supports filtering + search).
+   Returns all tasks (supports filtering + search).
 
    Query params:
    - category  : filter by category
    - search    : text search on title, description, location
    - status    : filter by status (open / accepted / completed)
    - postedBy  : filter by user id
+   - acceptedBy: filter by user id
    ───────────────────────────────────────────────────────── */
 router.get("/", (req, res) => {
-  const { category, search, status, postedBy } = req.query;
+  const { category, search, status, postedBy, acceptedBy } = req.query;
 
-  let result = [...db.tasks];
-
-  if (category) {
-    result = result.filter(
-      (t) => t.category.toLowerCase() === category.toLowerCase()
-    );
-  }
-
-  if (status) {
-    result = result.filter((t) => t.status === status);
-  }
-
-  if (postedBy) {
-    result = result.filter((t) => t.postedBy === postedBy);
-  }
-
-  if (search) {
-    const q = search.toLowerCase();
-    result = result.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.description.toLowerCase().includes(q) ||
-        t.location.toLowerCase().includes(q) ||
-        t.category.toLowerCase().includes(q)
-    );
-  }
-
-  // Sort newest first
-  result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const result = db.tasks.findAll({ category, search, status, postedBy, acceptedBy });
 
   res.json({
     success: true,
@@ -76,23 +49,8 @@ router.get("/", (req, res) => {
    Returns aggregate stats for the home page.
    ───────────────────────────────────────────────────────── */
 router.get("/stats", (req, res) => {
-  const open      = db.tasks.filter((t) => t.status === "open").length;
-  const accepted  = db.tasks.filter((t) => t.status === "accepted").length;
-  const completed = db.tasks.filter((t) => t.status === "completed").length;
-  const totalPaid = db.tasks
-    .filter((t) => t.status === "completed")
-    .reduce((sum, t) => sum + t.budget, 0);
-
-  res.json({
-    success: true,
-    data: {
-      openTasks:      open,
-      acceptedTasks:  accepted,
-      completedTasks: completed,
-      activeUsers:    db.users.length,
-      totalPaid,
-    },
-  });
+  const data = db.tasks.stats();
+  res.json({ success: true, data });
 });
 
 /* ─────────────────────────────────────────────────────────
@@ -100,14 +58,14 @@ router.get("/stats", (req, res) => {
    Returns a single task by id.
    ───────────────────────────────────────────────────────── */
 router.get("/:id", (req, res) => {
-  const task = db.tasks.find((t) => t.id === req.params.id);
+  const task = db.tasks.findById(req.params.id);
 
   if (!task) {
     return res.status(404).json({ success: false, message: "Task not found." });
   }
 
   // Attach poster info (without password)
-  const poster = db.users.find((u) => u.id === task.postedBy);
+  const poster = db.users.findById(task.postedBy);
   const result = {
     ...task,
     poster: poster
@@ -154,12 +112,13 @@ router.post("/", (req, res) => {
   }
 
   // ── Verify user exists ──────────────────────────────────
-  const user = db.users.find((u) => u.id === postedBy);
+  const user = db.users.findById(postedBy);
   if (!user) {
     return res.status(400).json({ success: false, message: "User not found." });
   }
 
   // ── Create task ─────────────────────────────────────────
+  const now  = new Date().toISOString();
   const task = {
     id:          db.newId("task-"),
     title:       title.trim(),
@@ -171,23 +130,23 @@ router.post("/", (req, res) => {
     status:      "open",
     postedBy,
     acceptedBy:  null,
-    createdAt:   new Date().toISOString(),
-    updatedAt:   new Date().toISOString(),
+    createdAt:   now,
+    updatedAt:   now,
   };
 
-  db.tasks.unshift(task);
+  const created = db.tasks.create(task);
 
   // Add notification for poster
-  db.notifications.unshift({
+  db.notifications.create({
     id:        db.newId("notif-"),
     userId:    postedBy,
     icon:      "🚀",
     text:      `Your task "${task.title}" is now live!`,
-    read:      false,
-    createdAt: new Date().toISOString(),
+    read:      0,
+    createdAt: now,
   });
 
-  res.status(201).json({ success: true, data: task });
+  res.status(201).json({ success: true, data: created });
 });
 
 /* ─────────────────────────────────────────────────────────
@@ -197,7 +156,7 @@ router.post("/", (req, res) => {
    Body: { acceptedBy }
    ───────────────────────────────────────────────────────── */
 router.patch("/:id/accept", (req, res) => {
-  const task = db.tasks.find((t) => t.id === req.params.id);
+  const task = db.tasks.findById(req.params.id);
 
   if (!task) {
     return res.status(404).json({ success: false, message: "Task not found." });
@@ -215,7 +174,7 @@ router.patch("/:id/accept", (req, res) => {
     return res.status(400).json({ success: false, message: "acceptedBy is required." });
   }
 
-  const acceptor = db.users.find((u) => u.id === acceptedBy);
+  const acceptor = db.users.findById(acceptedBy);
   if (!acceptor) {
     return res.status(400).json({ success: false, message: "User not found." });
   }
@@ -228,48 +187,49 @@ router.patch("/:id/accept", (req, res) => {
   }
 
   // Update task
-  task.status     = "accepted";
-  task.acceptedBy = acceptedBy;
-  task.updatedAt  = new Date().toISOString();
+  const now     = new Date().toISOString();
+  const updated = db.tasks.update(task.id, {
+    status:     "accepted",
+    acceptedBy,
+    updatedAt:  now,
+  });
 
   // Notify the task poster
-  db.notifications.unshift({
+  db.notifications.create({
     id:        db.newId("notif-"),
     userId:    task.postedBy,
     icon:      "✅",
     text:      `${acceptor.name} accepted your task "${task.title}".`,
-    read:      false,
-    createdAt: new Date().toISOString(),
+    read:      0,
+    createdAt: now,
   });
 
-  // Create a conversation between poster and acceptor
-  const existingConv = db.conversations.find(
-    (c) =>
-      c.taskId === task.id &&
-      c.participants.includes(task.postedBy) &&
-      c.participants.includes(acceptedBy)
+  // Create a conversation between poster and acceptor if one doesn't exist
+  const existingConv = db.conversations.findByPairAndTask(
+    task.postedBy, acceptedBy, task.id
   );
 
   if (!existingConv) {
-    db.conversations.push({
+    db.conversations.create({
       id:           db.newId("conv-"),
       taskId:       task.id,
-      participants: [task.postedBy, acceptedBy],
-      createdAt:    new Date().toISOString(),
+      participant1: task.postedBy,
+      participant2: acceptedBy,
+      createdAt:    now,
     });
   }
 
-  res.json({ success: true, data: task });
+  res.json({ success: true, data: updated });
 });
 
 /* ─────────────────────────────────────────────────────────
    PATCH /api/tasks/:id/complete
    Mark a task as completed.
 
-   Body: { userId } - must be the acceptor
+   Body: { userId } - must be the poster or acceptor
    ───────────────────────────────────────────────────────── */
 router.patch("/:id/complete", (req, res) => {
-  const task = db.tasks.find((t) => t.id === req.params.id);
+  const task = db.tasks.findById(req.params.id);
 
   if (!task) {
     return res.status(404).json({ success: false, message: "Task not found." });
@@ -290,24 +250,28 @@ router.patch("/:id/complete", (req, res) => {
     });
   }
 
-  task.status    = "completed";
-  task.updatedAt = new Date().toISOString();
+  const now     = new Date().toISOString();
+  const updated = db.tasks.update(task.id, {
+    status:    "completed",
+    updatedAt: now,
+  });
 
-  // Update acceptor's completed count
-  const acceptor = db.users.find((u) => u.id === task.acceptedBy);
-  if (acceptor) acceptor.tasksCompleted += 1;
+  // Increment acceptor's completed count
+  if (task.acceptedBy) {
+    db.users.incrementTasksCompleted(task.acceptedBy);
+  }
 
   // Notify poster
-  db.notifications.unshift({
+  db.notifications.create({
     id:        db.newId("notif-"),
     userId:    task.postedBy,
     icon:      "🎉",
     text:      `Task "${task.title}" has been completed!`,
-    read:      false,
-    createdAt: new Date().toISOString(),
+    read:      0,
+    createdAt: now,
   });
 
-  res.json({ success: true, data: task });
+  res.json({ success: true, data: updated });
 });
 
 /* ─────────────────────────────────────────────────────────
@@ -317,13 +281,12 @@ router.patch("/:id/complete", (req, res) => {
    Body: { userId }
    ───────────────────────────────────────────────────────── */
 router.delete("/:id", (req, res) => {
-  const idx = db.tasks.findIndex((t) => t.id === req.params.id);
+  const task = db.tasks.findById(req.params.id);
 
-  if (idx === -1) {
+  if (!task) {
     return res.status(404).json({ success: false, message: "Task not found." });
   }
 
-  const task = db.tasks[idx];
   const { userId } = req.body;
 
   if (task.postedBy !== userId) {
@@ -340,7 +303,7 @@ router.delete("/:id", (req, res) => {
     });
   }
 
-  db.tasks.splice(idx, 1);
+  db.tasks.delete(task.id);
 
   res.json({ success: true, message: "Task deleted." });
 });

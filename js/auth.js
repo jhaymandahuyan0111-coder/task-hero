@@ -1,75 +1,454 @@
+/**
+ * TaskHero — Authentication Controller
+ * Handles login / signup, client-side validation, API calls, and UI state.
+ */
+
+"use strict";
+
+/* ── CONFIG ────────────────────────────────────────────────── */
 const API_BASE = "http://localhost:3000/api";
-let isSignup = new URLSearchParams(window.location.search).get("mode") === "signup";
 
-const form = document.getElementById("authForm");
-const nameField = document.getElementById("nameField");
-const nameInput = document.getElementById("name");
-const passwordInput = document.getElementById("password");
-const authTitle = document.getElementById("authTitle");
+/* ── DARK MODE (mirror app.js pattern) ────────────────────── */
+(function applyDarkMode() {
+  if (localStorage.getItem("taskhero-dark-mode") === "true") {
+    document.body.classList.add("dark-mode");
+  }
+})();
+
+/* ── DOM REFS ─────────────────────────────────────────────── */
+const authForm     = document.getElementById("authForm");
+const authHeading  = document.getElementById("authHeading");
 const authSubtitle = document.getElementById("authSubtitle");
-const authSubmit = document.getElementById("authSubmit");
-const authError = document.getElementById("authError");
-const switchPrompt = document.getElementById("switchPrompt");
-const switchMode = document.getElementById("switchMode");
-const googleButton = document.getElementById("googleButton");
-const googleError = document.getElementById("googleError");
+const submitBtn    = document.getElementById("submitBtn");
+const switchBtn    = document.getElementById("switchBtn");
+const switchLine   = document.getElementById("switchLine");
+const googleBtn    = document.getElementById("googleBtn");
+const authError    = document.getElementById("authError");
+const forgotLink   = document.getElementById("forgotLink");
 
-function updateMode() {
-    nameField.hidden = !isSignup;
-    nameInput.required = isSignup;
-    authTitle.textContent = isSignup ? "Create your account" : "Sign in";
-    authSubtitle.textContent = isSignup
-        ? "Create an account to post tasks, accept work, and message people directly."
-        : "Sign in to manage tasks and message people directly.";
-    authSubmit.textContent = isSignup ? "Create account" : "Sign in";
-    switchPrompt.textContent = isSignup ? "Already have an account?" : "New to TaskHero?";
-    switchMode.textContent = isSignup ? "Sign in" : "Create an account";
-    passwordInput.autocomplete = isSignup ? "new-password" : "current-password";
+// Fields
+const nameField    = document.getElementById("nameField");
+const emailField   = document.getElementById("emailField");
+const passwordField= document.getElementById("passwordField");
+const confirmField = document.getElementById("confirmField");
+
+const nameInput    = document.getElementById("nameInput");
+const emailInput   = document.getElementById("emailInput");
+const passwordInput= document.getElementById("passwordInput");
+const confirmInput = document.getElementById("confirmInput");
+
+// Field errors
+const nameError    = document.getElementById("nameError");
+const emailError   = document.getElementById("emailError");
+const passwordError= document.getElementById("passwordError");
+const confirmError = document.getElementById("confirmError");
+
+// Password toggles
+const pwToggle1    = document.getElementById("pwToggle1");
+const pwToggle2    = document.getElementById("pwToggle2");
+
+/* ── STATE ────────────────────────────────────────────────── */
+const params  = new URLSearchParams(window.location.search);
+let isSignup  = params.get("mode") === "signup";
+let inFlight  = false;
+
+/* ── MODE SWITCHING ───────────────────────────────────────── */
+function setMode(signup) {
+  isSignup = signup;
+
+  // Update heading
+  authHeading.textContent  = signup ? "Join TaskHero 🚀" : "Welcome back 👋";
+  authSubtitle.textContent = signup
+    ? "Create an account to post tasks, hire heroes, and build your reputation."
+    : "Sign in to manage your tasks and connect with heroes.";
+
+  // Toggle fields
+  nameField.classList.toggle("hidden", !signup);
+  confirmField.classList.toggle("hidden", !signup);
+  forgotLink.style.display = signup ? "none" : "block";
+
+  nameInput.required    = signup;
+  confirmInput.required = signup;
+  passwordInput.autocomplete = signup ? "new-password" : "current-password";
+
+  // Update button
+  submitBtn.textContent = signup ? "Create account" : "Sign in";
+
+  // Update switch line
+  switchLine.innerHTML = signup
+    ? `Already have an account? <button type="button" id="switchBtn">Sign in</button>`
+    : `Don't have an account? <button type="button" id="switchBtn">Create account</button>`;
+
+  // Clear all errors and inputs
+  clearAllErrors();
+  clearFormValues();
+
+  // Re-focus first meaningful field
+  if (signup) {
+    nameInput.focus();
+  } else {
+    emailInput.focus();
+  }
 }
 
-switchMode.addEventListener("click", () => {
-    isSignup = !isSignup;
-    authError.textContent = "";
-    updateMode();
+function handleModeSwitch() {
+  setMode(!isSignup);
+}
+
+// Use event delegation so the listener survives innerHTML replacement in setMode
+switchLine.addEventListener("click", (e) => {
+  if (e.target.id === "switchBtn" || e.target.closest("#switchBtn")) {
+    handleModeSwitch();
+  }
 });
 
-googleButton.addEventListener("click", () => {
-    googleError.textContent = "Google sign-in needs a configured Google OAuth client ID.";
-});
+/* ── VALIDATION ───────────────────────────────────────────── */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    authError.textContent = "";
-    authSubmit.disabled = true;
-    authSubmit.textContent = isSignup ? "Creating account..." : "Signing in...";
+function showFieldError(el, msg) {
+  el.textContent = msg;
+  el.classList.add("visible");
+  el.previousElementSibling?.querySelector("input")?.setAttribute("aria-invalid", "true");
+}
 
-    const payload = {
-        email: document.getElementById("email").value.trim(),
-        password: passwordInput.value,
-    };
-    if (isSignup) payload.name = nameInput.value.trim();
+function clearFieldError(el) {
+  el.textContent = "";
+  el.classList.remove("visible");
+  el.previousElementSibling?.querySelector("input")?.removeAttribute("aria-invalid");
+}
 
-    try {
-        const response = await fetch(`${API_BASE}/users/${isSignup ? "register" : "login"}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-        });
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-            throw new Error(result.errors?.join(" ") || result.message || "Unable to authenticate.");
-        }
+function clearAllErrors() {
+  [nameError, emailError, passwordError, confirmError].forEach(clearFieldError);
+  hideGlobalError();
+}
 
-        localStorage.setItem("taskhero-user", JSON.stringify(result.data));
-        const returnTo = new URLSearchParams(window.location.search).get("returnTo");
-        window.location.href = returnTo || "home.html";
-    } catch (error) {
-        authError.textContent = error.message.includes("Failed to fetch")
-            ? "The TaskHero server is unavailable. Start the backend and try again."
-            : error.message;
-        authSubmit.disabled = false;
-        updateMode();
+function clearFormValues() {
+  nameInput.value    = "";
+  emailInput.value   = "";
+  passwordInput.value= "";
+  confirmInput.value = "";
+}
+
+function showGlobalError(msg) {
+  authError.textContent = msg;
+  authError.classList.add("visible");
+  // Trigger shake animation
+  authError.classList.remove("shake");
+  void authError.offsetWidth; // reflow
+  authError.classList.add("shake");
+}
+
+function hideGlobalError() {
+  authError.textContent = "";
+  authError.classList.remove("visible", "shake");
+}
+
+/**
+ * Validates form and returns { valid: bool, payload: obj|null }
+ */
+function validateForm() {
+  let valid = true;
+  clearAllErrors();
+
+  const name     = nameInput.value.trim();
+  const email    = emailInput.value.trim();
+  const password = passwordInput.value;
+  const confirm  = confirmInput.value;
+
+  if (isSignup) {
+    if (name.length < 2) {
+      showFieldError(nameError, "Name must be at least 2 characters.");
+      valid = false;
     }
+  }
+
+  if (!EMAIL_RE.test(email)) {
+    showFieldError(emailError, "Enter a valid email address.");
+    valid = false;
+  }
+
+  if (password.length < 6) {
+    showFieldError(passwordError, "Password must be at least 6 characters.");
+    valid = false;
+  }
+
+  if (isSignup && password !== confirm) {
+    showFieldError(confirmError, "Passwords don't match.");
+    valid = false;
+  }
+
+  const payload = valid
+    ? isSignup
+      ? { name, email, password }
+      : { email, password }
+    : null;
+
+  return { valid, payload };
+}
+
+/* ── PASSWORD TOGGLES ─────────────────────────────────────── */
+function wirePasswordToggle(input, toggleBtn) {
+  toggleBtn.addEventListener("click", () => {
+    const isHidden = input.type === "password";
+    input.type = isHidden ? "text" : "password";
+    toggleBtn.textContent = isHidden ? "🙈" : "👁";
+    toggleBtn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+    input.focus();
+  });
+}
+
+wirePasswordToggle(passwordInput, pwToggle1);
+wirePasswordToggle(confirmInput,  pwToggle2);
+
+/* ── LIVE INLINE VALIDATION (on blur) ────────────────────── */
+nameInput.addEventListener("blur", () => {
+  if (!isSignup) return;
+  const v = nameInput.value.trim();
+  if (v.length > 0 && v.length < 2) {
+    showFieldError(nameError, "Name must be at least 2 characters.");
+  } else {
+    clearFieldError(nameError);
+  }
 });
 
-updateMode();
+emailInput.addEventListener("blur", () => {
+  const v = emailInput.value.trim();
+  if (v.length > 0 && !EMAIL_RE.test(v)) {
+    showFieldError(emailError, "Enter a valid email address.");
+  } else {
+    clearFieldError(emailError);
+  }
+});
+
+passwordInput.addEventListener("blur", () => {
+  const v = passwordInput.value;
+  if (v.length > 0 && v.length < 6) {
+    showFieldError(passwordError, "Password must be at least 6 characters.");
+  } else {
+    clearFieldError(passwordError);
+  }
+});
+
+confirmInput.addEventListener("input", () => {
+  if (!isSignup) return;
+  const pw  = passwordInput.value;
+  const cfw = confirmInput.value;
+  if (cfw.length > 0 && cfw !== pw) {
+    showFieldError(confirmError, "Passwords don't match.");
+  } else {
+    clearFieldError(confirmError);
+  }
+});
+
+/* ── BUTTON STATE ─────────────────────────────────────────── */
+function setLoading(loading) {
+  inFlight = loading;
+  submitBtn.disabled = loading;
+
+  if (loading) {
+    const label = isSignup ? "Creating account…" : "Signing in…";
+    submitBtn.innerHTML = `⏳ ${label}`;
+  } else {
+    submitBtn.textContent = isSignup ? "Create account" : "Sign in";
+  }
+}
+
+function setSuccess() {
+  submitBtn.textContent = "✅ Success!";
+  submitBtn.disabled = true;
+}
+
+/* ── FORM SUBMIT ──────────────────────────────────────────── */
+authForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (inFlight) return;
+
+  const { valid, payload } = validateForm();
+  if (!valid) return;
+
+  setLoading(true);
+  hideGlobalError();
+
+  const endpoint = isSignup ? "register" : "login";
+
+  try {
+    const res = await fetch(`${API_BASE}/users/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || !result.success) {
+      const msg =
+        (Array.isArray(result.errors) && result.errors.length)
+          ? result.errors.join(" ")
+          : (result.message || "Authentication failed. Please try again.");
+      throw new Error(msg);
+    }
+
+    // Success — store user and redirect
+    localStorage.setItem("taskhero-user", JSON.stringify(result.data));
+
+    setSuccess();
+
+    setTimeout(() => {
+      const returnTo = params.get("returnTo");
+      window.location.href = returnTo || "home.html";
+    }, 350);
+
+  } catch (err) {
+    setLoading(false);
+
+    const isNetworkError =
+      err instanceof TypeError &&
+      (err.message.includes("Failed to fetch") || err.message.includes("NetworkError") || err.message.includes("fetch"));
+
+    const displayMsg = isNetworkError
+      ? "The TaskHero server is offline. Make sure the backend is running."
+      : err.message;
+
+    showGlobalError(displayMsg);
+  }
+});
+
+/* ── GOOGLE SIGN-IN ───────────────────────────────────────── */
+
+/**
+ * State hooks called by the inline GSI handler in auth.html.
+ * Keeping them here alongside the rest of the UI logic.
+ */
+window.__googleAuthStart = function () {
+  inFlight = true;
+  googleBtn.disabled = true;
+  googleBtn.innerHTML = `<span class="google-g" aria-hidden="true">G</span> Signing in…`;
+  hideGlobalError();
+};
+
+window.__googleAuthSuccess = function () {
+  googleBtn.innerHTML = `<span class="google-g" aria-hidden="true">✓</span> Signed in!`;
+  googleBtn.disabled  = true;
+};
+
+window.__googleAuthError = function (msg) {
+  inFlight = false;
+  googleBtn.disabled = false;
+  googleBtn.innerHTML = `<span class="google-g" aria-hidden="true">G</span> Continue with Google`;
+  showGlobalError(msg);
+};
+
+googleBtn.addEventListener("click", () => {
+  // Guard: client ID not configured yet
+  if (
+    !window.GOOGLE_CLIENT_ID ||
+    window.GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
+  ) {
+    showGlobalError(
+      "Google sign-in is not configured. Add your Client ID to auth.html (window.GOOGLE_CLIENT_ID)."
+    );
+    return;
+  }
+
+  // GSI library not loaded (e.g. offline / blocked)
+  if (!window.google || !window.google.accounts) {
+    showGlobalError(
+      "Google sign-in could not load. Check your internet connection and try again."
+    );
+    return;
+  }
+
+  hideGlobalError();
+  // Show the One Tap popup. The callback is handleCredentialResponse (auth.html)
+  google.accounts.id.prompt((notification) => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      // One Tap was suppressed (e.g. user dismissed too many times).
+      // Fall back to the standard popup picker.
+      google.accounts.id.renderButton(
+        document.getElementById("googleBtn"),
+        { theme: "outline", size: "large", width: 368, text: "continue_with" }
+      );
+    }
+  });
+});
+
+/* ── FORGOT PASSWORD ──────────────────────────────────────── */
+forgotLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  showGlobalError("Password reset isn't available yet. Contact support if needed.");
+});
+
+/* ── ADMIN BYPASS (dev only) ──────────────────────────────── */
+(function () {
+  const trigger = document.getElementById("adminTrigger");
+  if (!trigger) return;
+
+  let clicks = 0;
+  let resetTimer = null;
+
+  trigger.addEventListener("click", () => {
+    clicks++;
+
+    // Reset click count if user goes idle for 2 s
+    clearTimeout(resetTimer);
+    resetTimer = setTimeout(() => { clicks = 0; }, 2000);
+
+    // 5 rapid clicks = bypass
+    if (clicks >= 5) {
+      clicks = 0;
+      clearTimeout(resetTimer);
+
+      const adminUser = {
+        id:             "admin-dev",
+        name:           "Admin",
+        email:          "admin@taskhero.dev",
+        avatar:         "A",
+        tagline:        "Admin account",
+        location:       "",
+        bio:            "",
+        skills:         [],
+        expertise:      [],
+        certs:          [],
+        portfolio:      [],
+        workExp:        [],
+        contact:        {},
+        rating:         5,
+        tasksCompleted: 0,
+        joinedAt:       new Date().toISOString(),
+      };
+
+      localStorage.setItem("taskhero-user", JSON.stringify(adminUser));
+
+      // Brief visual confirm on the logo only
+      trigger.textContent  = "✓";
+      trigger.style.background = "#16a34a";
+      setTimeout(() => {
+        const returnTo = params.get("returnTo");
+        window.location.href = returnTo || "home.html";
+      }, 400);
+    }
+  });
+})();
+
+/* ── INIT ─────────────────────────────────────────────────── */
+setMode(isSignup);
+
+// If already logged in, go straight to home (unless we're intentionally on auth)
+(function checkAlreadyLoggedIn() {
+  try {
+    const stored = localStorage.getItem("taskhero-user");
+    if (stored) {
+      const user = JSON.parse(stored);
+      // Only auto-redirect if we have a valid user object (has id or token)
+      if (user && (user.id || user._id || user.token)) {
+        const returnTo = params.get("returnTo");
+        // Don't redirect if user manually navigated to auth with ?mode=signup
+        if (!params.get("mode")) {
+          window.location.href = returnTo || "home.html";
+        }
+      }
+    }
+  } catch (_) {
+    // Malformed storage — ignore
+  }
+})();
