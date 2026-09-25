@@ -272,11 +272,32 @@ function buildUpdate(table, allowedFields, fields, id) {
   return db.prepare(`UPDATE ${table} SET ${setClauses} WHERE id = @id`);
 }
 
-// ── Seed data ─────────────────────────────────────────────
+// ── Demo data ─────────────────────────────────────────────
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+let demoDataPurged = false;
+
+if (isProduction) {
+  const demoUsers = ['user-1', 'user-2', 'user-3', 'user-4', 'user-5'];
+  const demoTasks = ['task-1', 'task-2', 'task-3', 'task-4'];
+  const placeholders = (values) => values.map(() => '?').join(', ');
+
+  db.transaction(() => {
+    db.prepare(`DELETE FROM messages WHERE conversationId IN (SELECT id FROM conversations WHERE participant1 IN (${placeholders(demoUsers)}) OR participant2 IN (${placeholders(demoUsers)}))`).run(...demoUsers, ...demoUsers);
+    db.prepare(`DELETE FROM message_hidden WHERE userId IN (${placeholders(demoUsers)})`).run(...demoUsers);
+    db.prepare(`DELETE FROM notifications WHERE userId IN (${placeholders(demoUsers)})`).run(...demoUsers);
+    db.prepare(`DELETE FROM user_follows WHERE followerId IN (${placeholders(demoUsers)}) OR followingId IN (${placeholders(demoUsers)})`).run(...demoUsers, ...demoUsers);
+    db.prepare(`DELETE FROM reviews WHERE reviewerId IN (${placeholders(demoUsers)}) OR revieweeId IN (${placeholders(demoUsers)}) OR taskId IN (${placeholders(demoTasks)})`).run(...demoUsers, ...demoUsers, ...demoTasks);
+    db.prepare(`DELETE FROM conversations WHERE participant1 IN (${placeholders(demoUsers)}) OR participant2 IN (${placeholders(demoUsers)}) OR taskId IN (${placeholders(demoTasks)})`).run(...demoUsers, ...demoUsers, ...demoTasks);
+    db.prepare(`DELETE FROM tasks WHERE id IN (${placeholders(demoTasks)}) OR postedBy IN (${placeholders(demoUsers)}) OR acceptedBy IN (${placeholders(demoUsers)})`).run(...demoTasks, ...demoUsers, ...demoUsers);
+    db.prepare(`DELETE FROM users WHERE id IN (${placeholders(demoUsers)})`).run(...demoUsers);
+  })();
+  demoDataPurged = true;
+}
 
 const seedCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
 
-if (seedCount === 0) {
+if (seedCount === 0 && !demoDataPurged) {
   const seedUsers = [
     {
       id:             'user-1',

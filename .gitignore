@@ -1,4 +1,6 @@
 backend/node_modules/
+backend/taskhero.db*
+package-lock.json
 .env
 .env.*
 !.env.example

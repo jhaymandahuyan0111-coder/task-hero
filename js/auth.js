@@ -344,58 +344,6 @@ forgotLink.addEventListener("click", (e) => {
   showGlobalError("Password reset isn't available yet. Contact support if needed.");
 });
 
-/* ── ADMIN BYPASS (dev only) ──────────────────────────────── */
-(function () {
-  const trigger = document.getElementById("adminTrigger");
-  if (!trigger) return;
-
-  let clicks = 0;
-  let resetTimer = null;
-
-  trigger.addEventListener("click", () => {
-    clicks++;
-
-    // Reset click count if user goes idle for 2 s
-    clearTimeout(resetTimer);
-    resetTimer = setTimeout(() => { clicks = 0; }, 2000);
-
-    // 5 rapid clicks = bypass
-    if (clicks >= 5) {
-      clicks = 0;
-      clearTimeout(resetTimer);
-
-      const adminUser = {
-        id:             "admin-dev",
-        name:           "Admin",
-        email:          "admin@taskhero.dev",
-        avatar:         "A",
-        tagline:        "Admin account",
-        location:       "",
-        bio:            "",
-        skills:         [],
-        expertise:      [],
-        certs:          [],
-        portfolio:      [],
-        workExp:        [],
-        contact:        {},
-        rating:         5,
-        tasksCompleted: 0,
-        joinedAt:       new Date().toISOString(),
-      };
-
-      localStorage.setItem("taskhero-user", JSON.stringify(adminUser));
-
-      // Brief visual confirm on the logo only
-      trigger.textContent  = "✓";
-      trigger.style.background = "#16a34a";
-      setTimeout(() => {
-        const returnTo = params.get("returnTo");
-        window.location.href = returnTo || "home.html";
-      }, 400);
-    }
-  });
-})();
-
 /* ── INIT ─────────────────────────────────────────────────── */
 setMode(isSignup);
 
