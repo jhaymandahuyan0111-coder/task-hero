@@ -111,6 +111,30 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_reviews_revieweeId ON reviews(revieweeId);
 `);
 
+// Remove orphaned task records before they can reach the feed. Valid tasks
+// remain untouched; accepted tasks with a missing acceptor are reopened.
+const orphanTaskIds = db.prepare(`
+  SELECT id FROM tasks
+  WHERE NOT EXISTS (SELECT 1 FROM users WHERE users.id = tasks.postedBy)
+`).all().map((row) => row.id);
+
+db.transaction(() => {
+  if (orphanTaskIds.length) {
+    const placeholders = orphanTaskIds.map(() => '?').join(', ');
+    db.prepare(`DELETE FROM messages WHERE conversationId IN (SELECT id FROM conversations WHERE taskId IN (${placeholders}))`).run(...orphanTaskIds);
+    db.prepare(`DELETE FROM reviews WHERE taskId IN (${placeholders})`).run(...orphanTaskIds);
+    db.prepare(`DELETE FROM conversations WHERE taskId IN (${placeholders})`).run(...orphanTaskIds);
+    db.prepare(`DELETE FROM tasks WHERE id IN (${placeholders})`).run(...orphanTaskIds);
+  }
+
+  db.prepare(`
+    UPDATE tasks
+    SET acceptedBy = NULL, status = 'open', updatedAt = ?
+    WHERE acceptedBy IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM users WHERE users.id = tasks.acceptedBy)
+  `).run(new Date().toISOString());
+})();
+
 // ── JSON field helpers ────────────────────────────────────
 
 function parseJson(val, fallback) {
@@ -567,6 +591,9 @@ module.exports = {
   tasks: {
     findAll(filters = {}) {
       let rows = stmts.tasks.findAll.all();
+
+      // Defense in depth for databases created before orphan cleanup existed.
+      rows = rows.filter((task) => Boolean(stmts.users.findById.get(task.postedBy)));
 
       if (filters.category) {
         rows = rows.filter(
