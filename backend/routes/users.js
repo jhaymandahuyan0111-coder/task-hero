@@ -61,6 +61,60 @@ router.get("/search", (req, res) => {
 });
 
 /* ─────────────────────────────────────────────────────────
+   POST /api/users/:id/follow and DELETE /api/users/:id/follow
+   Follow or unfollow a user for the requesting account.
+   ───────────────────────────────────────────────────────── */
+router.post("/:id/follow", (req, res) => {
+  const { followerId } = req.body;
+  const following = db.users.findById(req.params.id);
+  const follower = followerId ? db.users.findById(followerId) : null;
+
+  if (!follower || !following) {
+    return res.status(404).json({ success: false, message: "User not found." });
+  }
+  if (follower.id === following.id) {
+    return res.status(400).json({ success: false, message: "You cannot follow yourself." });
+  }
+
+  db.users.follow(follower.id, following.id);
+  res.json({
+    success: true,
+    following: true,
+    followerCount: db.users.followerCount(following.id),
+  });
+});
+
+router.delete("/:id/follow", (req, res) => {
+  const { followerId } = req.body;
+  const following = db.users.findById(req.params.id);
+  const follower = followerId ? db.users.findById(followerId) : null;
+
+  if (!follower || !following) {
+    return res.status(404).json({ success: false, message: "User not found." });
+  }
+
+  db.users.unfollow(follower.id, following.id);
+  res.json({
+    success: true,
+    following: false,
+    followerCount: db.users.followerCount(following.id),
+  });
+});
+
+router.get("/:id/follow-status", (req, res) => {
+  const user = db.users.findById(req.params.id);
+  if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+  const viewerId = req.query.viewerId;
+  res.json({
+    success: true,
+    following: Boolean(viewerId && db.users.isFollowing(viewerId, user.id)),
+    followerCount: db.users.followerCount(user.id),
+    followingCount: db.users.followingCount(user.id),
+  });
+});
+
+/* ─────────────────────────────────────────────────────────
    GET /api/users/:id
    Returns a single user by id.
    Includes their posted tasks and accepted tasks.
@@ -79,6 +133,8 @@ router.get("/:id", (req, res) => {
     success: true,
     data: {
       ...safeUser(user),
+      followerCount: db.users.followerCount(user.id),
+      followingCount: db.users.followingCount(user.id),
       postedTasks,
       acceptedTasks,
     },

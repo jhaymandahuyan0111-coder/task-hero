@@ -38,6 +38,14 @@ db.exec(`
     joinedAt       TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS user_follows (
+    followerId  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    followingId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    createdAt   TEXT NOT NULL,
+    PRIMARY KEY (followerId, followingId),
+    CHECK (followerId <> followingId)
+  );
+
   CREATE TABLE IF NOT EXISTS tasks (
     id          TEXT PRIMARY KEY,
     title       TEXT NOT NULL,
@@ -150,6 +158,14 @@ const stmts = {
     updateTasksCompleted: db.prepare(`
       UPDATE users SET tasksCompleted = tasksCompleted + 1 WHERE id = ?
     `),
+    followerCount: db.prepare('SELECT COUNT(*) as count FROM user_follows WHERE followingId = ?'),
+    followingCount: db.prepare('SELECT COUNT(*) as count FROM user_follows WHERE followerId = ?'),
+    follows: db.prepare('SELECT 1 FROM user_follows WHERE followerId = ? AND followingId = ?'),
+    follow: db.prepare(`
+      INSERT OR IGNORE INTO user_follows (followerId, followingId, createdAt)
+      VALUES (?, ?, ?)
+    `),
+    unfollow: db.prepare('DELETE FROM user_follows WHERE followerId = ? AND followingId = ?'),
   },
 
   tasks: {
@@ -453,6 +469,26 @@ module.exports = {
 
     findByEmail(email) {
       return parseUser(stmts.users.findByEmail.get(email));
+    },
+
+    followerCount(id) {
+      return stmts.users.followerCount.get(id).count;
+    },
+
+    followingCount(id) {
+      return stmts.users.followingCount.get(id).count;
+    },
+
+    isFollowing(followerId, followingId) {
+      return Boolean(stmts.users.follows.get(followerId, followingId));
+    },
+
+    follow(followerId, followingId) {
+      stmts.users.follow.run(followerId, followingId, new Date().toISOString());
+    },
+
+    unfollow(followerId, followingId) {
+      stmts.users.unfollow.run(followerId, followingId);
     },
 
     create(user) {

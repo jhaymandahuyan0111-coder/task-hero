@@ -1396,11 +1396,20 @@ async function loadApiUserProfile(userId) {
         if (me && me.id !== userId) {
             const heroActions = document.querySelector(".hero-actions");
             if (heroActions) {
+            const followBtn = document.createElement("button");
+            followBtn.className = "btn-primary";
+            followBtn.type = "button";
+            followBtn.textContent = "Follow";
+            followBtn.onclick = () => toggleFollow(userId, followBtn);
+            heroActions.prepend(followBtn);
+
                 const msgBtn = document.createElement("button");
                 msgBtn.className = "btn-primary";
                 msgBtn.textContent = "✉ Message";
                 msgBtn.onclick = () => requireAuth("messeges-page.html");
                 heroActions.prepend(msgBtn);
+
+            loadFollowStatus(userId, followBtn);
             }
         }
 
@@ -1414,6 +1423,47 @@ async function loadApiUserProfile(userId) {
             errBanner.textContent = "Could not load profile — make sure the backend is running.";
         }
     }
+}
+
+async function loadFollowStatus(userId, button) {
+  const me = currentUser();
+  if (!me) return;
+  try {
+    const response = await fetch(`${window.TASKHERO_API_BASE}/users/${encodeURIComponent(userId)}/follow-status?viewerId=${encodeURIComponent(me.id)}`);
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.message || "Unable to load follow status.");
+    button.dataset.following = result.following ? "true" : "false";
+    button.textContent = result.following ? "Following" : "Follow";
+    button.classList.toggle("btn-ghost", result.following);
+    button.classList.toggle("btn-primary", !result.following);
+  } catch (_) {
+    button.disabled = true;
+  }
+}
+
+async function toggleFollow(userId, button) {
+  const me = currentUser();
+  if (!me || button.disabled) return;
+  const isFollowing = button.dataset.following === "true";
+  button.disabled = true;
+  try {
+    const response = await fetch(`${window.TASKHERO_API_BASE}/users/${encodeURIComponent(userId)}/follow`, {
+      method: isFollowing ? "DELETE" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ followerId: me.id }),
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.message || "Unable to update connection.");
+    button.dataset.following = result.following ? "true" : "false";
+    button.textContent = result.following ? "Following" : "Follow";
+    button.classList.toggle("btn-ghost", result.following);
+    button.classList.toggle("btn-primary", !result.following);
+    showToast(result.following ? "You are now following this user." : "You unfollowed this user.", "success");
+  } catch (error) {
+    showToast(error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function() {
