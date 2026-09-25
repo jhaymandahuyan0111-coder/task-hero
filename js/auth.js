@@ -338,38 +338,6 @@ window.__googleAuthError = function (msg) {
   showGlobalError(msg);
 };
 
-googleBtn.addEventListener("click", () => {
-  // Guard: client ID not configured yet
-  if (
-    !window.GOOGLE_CLIENT_ID ||
-    window.GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"
-  ) {
-    showGlobalError("Google sign-in needs a Google OAuth Client ID. Add it to auth.html as window.GOOGLE_CLIENT_ID.");
-    return;
-  }
-
-  // GSI library not loaded (e.g. offline / blocked)
-  if (!window.google || !window.google.accounts) {
-    showGlobalError(
-      "Google sign-in could not load. Check your internet connection and try again."
-    );
-    return;
-  }
-
-  hideGlobalError();
-  // The callback is handleCredentialResponse (auth.html) for both sign-in and sign-up.
-  google.accounts.id.prompt((notification) => {
-    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-      // One Tap was suppressed (e.g. user dismissed too many times).
-      // Fall back to the standard popup picker.
-      google.accounts.id.renderButton(
-        document.getElementById("googleBtn"),
-        { theme: "outline", size: "large", width: 368, text: "continue_with" }
-      );
-    }
-  });
-});
-
 /* ── FORGOT PASSWORD ──────────────────────────────────────── */
 forgotLink.addEventListener("click", (e) => {
   e.preventDefault();

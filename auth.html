@@ -469,6 +469,10 @@
         auto_select:            false,
         cancel_on_tap_outside:  true,
       });
+      google.accounts.id.renderButton(
+        document.getElementById("googleBtn"),
+        { theme: "outline", size: "large", width: 368, text: "continue_with" }
+      );
     });
   </script>
   <script src="js/auth.js"></script>

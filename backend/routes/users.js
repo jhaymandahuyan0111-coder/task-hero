@@ -181,7 +181,7 @@ router.post("/google", (req, res) => {
     id:             db.newId("user-"),
     name:           displayName,
     email:          email.toLowerCase().trim(),
-    password:       bcrypt.hashSync(googleId + process.env.GOOGLE_PW_SALT || googleId + "taskhero-google", 10),
+    password:       bcrypt.hashSync(googleId + (process.env.GOOGLE_PW_SALT || "taskhero-google"), 10),
     avatar:         avatar || displayName.charAt(0).toUpperCase(),
     bio:            "",
     tagline:        "",
