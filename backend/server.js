@@ -58,10 +58,15 @@ const PORT = process.env.PORT || 3000;
    MIDDLEWARE
    ───────────────────────────────────────────────────────── */
 
-// CORS — allow the frontend when opened from file:// or any local dev server port.
+// CORS — allow local development and the deployed GitHub Pages frontend.
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || origin === "null" || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+    if (
+      !origin ||
+      origin === "null" ||
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+      origin === "https://jhaymandahuyan0111-coder.github.io"
+    ) {
       return callback(null, true);
     }
     return callback(new Error("Origin is not allowed by CORS."));
