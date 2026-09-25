@@ -420,7 +420,6 @@ body.dark-mode .avatar .online-dot { border-color: var(--card); }
         const USERS_API    = `${window.TASKHERO_API_BASE}/users`;
         const CONVERSATIONS = [];   // filled by loadConversations()
         let activeConvo     = null; // currently open conversationId
-        let allUsers        = [];   // all other members, loaded once
 
         /* ── HELPERS ────────────────────────────────────────── */
         function escHtml(str) {
@@ -491,27 +490,28 @@ body.dark-mode .avatar .online-dot { border-color: var(--card); }
 
         /* ── USER SEARCH (start new conversation) ───────────── */
         async function loadUsers() {
-            const user = currentUser();
-            if (!user) return;
-            try {
-                const res    = await fetch(USERS_API);
-                const result = await res.json();
-                if (!res.ok || !result.success) throw new Error("Unable to load users.");
-                allUsers = result.data.filter(m => m.id !== user.id);
-            } catch (err) {
-                document.getElementById("userResults").innerHTML =
-                    `<div style="padding:6px 0;color:var(--danger);font-size:12px">${escHtml(err.message)}</div>`;
-            }
+            return true;
         }
 
-        function searchUsers() {
+        async function searchUsers() {
             const query   = document.getElementById("userSearch").value.trim().toLowerCase();
             const results = document.getElementById("userResults");
             if (!query) { results.innerHTML = ""; return; }
-            const matches = allUsers.filter(m =>
-                m.name.toLowerCase().includes(query) ||
-                (m.email || "").toLowerCase().includes(query)
-            );
+            results.innerHTML = `<div style="padding:6px 0;color:var(--text-sub);font-size:12px">Searching…</div>`;
+            try {
+                const response = await fetch(`${USERS_API}/search?q=${encodeURIComponent(query)}`);
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || "Unable to search users.");
+                if (document.getElementById("userSearch").value.trim().toLowerCase() !== query) return;
+                const user = currentUser();
+                const matches = result.data.filter((member) => !user || member.id !== user.id);
+                renderUserResults(matches, results);
+            } catch (error) {
+                results.innerHTML = `<div style="padding:6px 0;color:var(--danger);font-size:12px">${escHtml(error.message)}</div>`;
+            }
+        }
+
+        function renderUserResults(matches, results) {
             results.innerHTML = matches.length
                 ? matches.map(m => {
                     const av = m.avatar && m.avatar.length > 2
