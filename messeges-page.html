@@ -261,6 +261,13 @@
     color: white;
     border-radius: 16px 16px 4px 16px;
 }
+.message-row { display: flex; align-items: center; gap: 6px; }
+.message-row.sent { justify-content: flex-end; }
+.message-delete {
+    border: 0; background: transparent; color: var(--text-sub); cursor: pointer;
+    font-size: 14px; padding: 4px; opacity: 0; transition: opacity .15s;
+}
+.message-row:hover .message-delete { opacity: 1; }
 .msg-time { display: block; font-size: 10px; margin-top: 4px; opacity: 0.55; }
 
 /* Typing */
@@ -588,8 +595,9 @@ body.dark-mode .avatar .online-dot { border-color: var(--card); }
         }
 
         /* ── RENDER MESSAGES ────────────────────────────────── */
-        function renderMessages(messages) {
+        function renderMessages(messages, preserveScroll = false) {
             const container = document.getElementById("chatMessages");
+            const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
             if (!messages.length) {
                 container.innerHTML = `<div class="date-separator">No messages yet</div>`;
                 return;
@@ -602,10 +610,43 @@ body.dark-mode .avatar .online-dot { border-color: var(--card); }
                     ? `<div class="date-separator">${msgDate === new Date().toDateString() ? "Today" : new Date(msg.createdAt).toLocaleDateString([], { weekday:"long", month:"short", day:"numeric" })}</div>`
                     : "";
                 lastDate = msgDate;
-                return sep + `<div class="message ${msg.isMe ? "sent" : "received"}">${escHtml(msg.text)}<span class="msg-time">${fmtTime(msg.createdAt)}</span></div>`;
+                const message = `<div class="message ${msg.isMe ? "sent" : "received"}">${escHtml(msg.text)}<span class="msg-time">${fmtTime(msg.createdAt)}</span></div>`;
+                const deleteButton = `<button class="message-delete" type="button" title="Delete for me" aria-label="Delete message for me" onclick="deleteMessage('${msg.id}')">×</button>`;
+                return sep + `<div class="message-row ${msg.isMe ? "sent" : "received"}">${msg.isMe ? message + deleteButton : deleteButton + message}</div>`;
             }).join("");
             container.innerHTML = html;
-            container.scrollTop = container.scrollHeight;
+            if (!preserveScroll || wasNearBottom) container.scrollTop = container.scrollHeight;
+        }
+
+        async function refreshActiveConversation() {
+            if (!activeConvo) return;
+            const user = currentUser();
+            if (!user) return;
+            try {
+                const response = await fetch(`${MESSAGE_API}/conversations/${encodeURIComponent(user.id)}/${encodeURIComponent(activeConvo)}`);
+                const result = await response.json();
+                if (response.ok && result.success) renderMessages(result.data, true);
+                await loadConversations();
+            } catch (_) {
+                // Polling failures should not interrupt typing or show repeated toasts.
+            }
+        }
+
+        async function deleteMessage(messageId) {
+            const user = currentUser();
+            if (!user || !activeConvo) return;
+            try {
+                const response = await fetch(`${MESSAGE_API}/${encodeURIComponent(messageId)}`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: user.id }),
+                });
+                const result = await response.json();
+                if (!response.ok || !result.success) throw new Error(result.message || "Unable to delete message.");
+                await refreshActiveConversation();
+            } catch (error) {
+                showToast(error.message, "error");
+            }
         }
 
         /* ── SEND MESSAGE ────────────────────────────────────── */
@@ -676,6 +717,7 @@ body.dark-mode .avatar .online-dot { border-color: var(--card); }
         document.addEventListener("DOMContentLoaded", async function () {
             await loadUsers();
             await loadConversations();
+            window.setInterval(refreshActiveConversation, 2000);
         });
     </script>
 </body>

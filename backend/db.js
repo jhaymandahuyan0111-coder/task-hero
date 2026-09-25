@@ -70,6 +70,13 @@ db.exec(`
     createdAt      TEXT NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS message_hidden (
+    messageId TEXT NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+    userId    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    hiddenAt  TEXT NOT NULL,
+    PRIMARY KEY (messageId, userId)
+  );
+
   CREATE TABLE IF NOT EXISTS notifications (
     id        TEXT PRIMARY KEY,
     userId    TEXT NOT NULL REFERENCES users(id),
@@ -191,6 +198,14 @@ const stmts = {
     markRead: db.prepare(`
       UPDATE messages SET read = 1
       WHERE conversationId = ? AND senderId != ?
+    `),
+    findById: db.prepare('SELECT * FROM messages WHERE id = ?'),
+    hideForUser: db.prepare(`
+      INSERT OR IGNORE INTO message_hidden (messageId, userId, hiddenAt)
+      VALUES (?, ?, ?)
+    `),
+    hiddenByUser: db.prepare(`
+      SELECT messageId FROM message_hidden WHERE userId = ?
     `),
   },
 
@@ -602,6 +617,18 @@ module.exports = {
 
     markRead(convId, userId) {
       stmts.messages.markRead.run(convId, userId);
+    },
+
+    findById(id) {
+      return stmts.messages.findById.get(id) || undefined;
+    },
+
+    hiddenByUser(userId) {
+      return new Set(stmts.messages.hiddenByUser.all(userId).map((row) => row.messageId));
+    },
+
+    hideForUser(messageId, userId) {
+      stmts.messages.hideForUser.run(messageId, userId, new Date().toISOString());
     },
   },
 

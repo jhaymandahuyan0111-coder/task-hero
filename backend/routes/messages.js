@@ -80,7 +80,10 @@ router.get("/conversations/:userId/:conversationId", (req, res) => {
   db.messages.markRead(conversationId, userId);
 
   // Fetch messages (already sorted ASC by createdAt)
-  const convMessages = db.messages.findByConversation(conversationId);
+  const hidden = db.messages.hiddenByUser(userId);
+  const convMessages = db.messages
+    .findByConversation(conversationId)
+    .filter((message) => !hidden.has(message.id));
 
   // Attach sender info to each message
   const withSender = convMessages.map((m) => {
@@ -170,6 +173,31 @@ router.post("/", (req, res) => {
       isMe:         true,
     },
   });
+});
+
+/* ─────────────────────────────────────────────────────────
+   DELETE /api/messages/:messageId
+   Hide a message for the requesting user only.
+   ───────────────────────────────────────────────────────── */
+router.delete("/:messageId", (req, res) => {
+  const { messageId } = req.params;
+  const { userId } = req.body;
+  const message = db.messages.findById(messageId);
+
+  if (!message) {
+    return res.status(404).json({ success: false, message: "Message not found." });
+  }
+  if (!userId) {
+    return res.status(400).json({ success: false, message: "userId is required." });
+  }
+
+  const conversation = db.conversations.findById(message.conversationId);
+  if (!conversation || (conversation.participant1 !== userId && conversation.participant2 !== userId)) {
+    return res.status(403).json({ success: false, message: "You cannot hide this message." });
+  }
+
+  db.messages.hideForUser(messageId, userId);
+  res.json({ success: true, message: "Message hidden for you." });
 });
 
 /* ─────────────────────────────────────────────────────────
