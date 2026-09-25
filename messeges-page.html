@@ -405,11 +405,12 @@ body.dark-mode .avatar .online-dot { border-color: var(--card); }
         </main>
     </div>
 
+    <script src="js/config.js"></script>
     <script src="js/app.js"></script>
     <script>
         /* ── STATE ──────────────────────────────────────────── */
-        const MESSAGE_API  = "http://localhost:3000/api/messages";
-        const USERS_API    = "http://localhost:3000/api/users";
+        const MESSAGE_API  = `${window.TASKHERO_API_BASE}/messages`;
+        const USERS_API    = `${window.TASKHERO_API_BASE}/users`;
         const CONVERSATIONS = [];   // filled by loadConversations()
         let activeConvo     = null; // currently open conversationId
         let allUsers        = [];   // all other members, loaded once

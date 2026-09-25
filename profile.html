@@ -811,6 +811,7 @@ body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color:
   </div>
 </div>
 
+<script src="js/config.js"></script>
 <script src="js/app.js"></script>
 <script>
 const STORAGE_KEY = "taskhero-profile";
@@ -1208,7 +1209,7 @@ function loadConnections() {
     const list = document.getElementById("connectionsList");
     const user = currentUser();
     if (!user) { list.innerHTML = '<p class="connections-empty">Sign in to see connections.</p>'; return; }
-    fetch("http://localhost:3000/api/users")
+    fetch(`${window.TASKHERO_API_BASE}/users`)
         .then(r => r.json())
         .then(result => {
             if (!result.success) throw new Error();
@@ -1331,7 +1332,7 @@ async function loadApiUserProfile(userId) {
     const wrapper = document.querySelector(".profile-wrapper");
 
     try {
-        const res  = await fetch(`http://localhost:3000/api/users/${encodeURIComponent(userId)}`);
+        const res  = await fetch(`${window.TASKHERO_API_BASE}/users/${encodeURIComponent(userId)}`);
         const json = await res.json();
 
         if (!res.ok || !json.success) {

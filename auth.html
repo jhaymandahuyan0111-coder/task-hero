@@ -387,6 +387,7 @@
     </section>
   </div>
 
+  <script src="js/config.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script>
     /**
@@ -429,7 +430,7 @@
       window.__googleAuthStart();
 
       try {
-        const res    = await fetch("http://localhost:3000/api/users/google", {
+        const res    = await fetch(`${window.TASKHERO_API_BASE}/users/google`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
           body:    JSON.stringify({ name, email, googleId, avatar }),

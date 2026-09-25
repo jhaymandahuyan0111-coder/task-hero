@@ -6,7 +6,7 @@
 "use strict";
 
 /* ── CONFIG ────────────────────────────────────────────────── */
-const API_BASE = "http://localhost:3000/api";
+const API_BASE = window.TASKHERO_API_BASE;
 
 /* ── DARK MODE (mirror app.js pattern) ────────────────────── */
 (function applyDarkMode() {

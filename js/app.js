@@ -272,7 +272,7 @@ function _closeProfileMenuOutside(e) {
 }
 
 (function () {
-    const API_BASE = "http://localhost:3000/api";
+    const API_BASE = window.TASKHERO_API_BASE;
     let _searchTimer = null;
     let _lastQuery   = "";
     let _activeIndex = -1;   // keyboard-selected result index
