@@ -106,12 +106,72 @@ router.get("/:id/follow-status", (req, res) => {
   if (!user) return res.status(404).json({ success: false, message: "User not found." });
 
   const viewerId = req.query.viewerId;
+  const viewerFollowsTarget  = Boolean(viewerId && db.users.isFollowing(viewerId, user.id));
+  const targetFollowsViewer  = Boolean(viewerId && db.users.isFollowing(user.id, viewerId));
+  const isMutual             = viewerFollowsTarget && targetFollowsViewer;
+
   res.json({
-    success: true,
-    following: Boolean(viewerId && db.users.isFollowing(viewerId, user.id)),
-    followerCount: db.users.followerCount(user.id),
+    success:        true,
+    following:      viewerFollowsTarget,
+    followedBack:   targetFollowsViewer,
+    isMutual,
+    followerCount:  db.users.followerCount(user.id),
     followingCount: db.users.followingCount(user.id),
   });
+});
+
+/* ─────────────────────────────────────────────────────────
+   GET /api/users/:id/followers
+   Returns the list of users who follow :id.
+   ───────────────────────────────────────────────────────── */
+router.get("/:id/followers", (req, res) => {
+  const user = db.users.findById(req.params.id);
+  if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+  const list = db.users.findFollowers(user.id).map(u => ({
+    id:     u.id,
+    name:   u.name,
+    avatar: u.avatar,
+    tagline: u.tagline,
+    location: u.location,
+  }));
+  res.json({ success: true, count: list.length, data: list });
+});
+
+/* ─────────────────────────────────────────────────────────
+   GET /api/users/:id/following
+   Returns the list of users that :id follows.
+   ───────────────────────────────────────────────────────── */
+router.get("/:id/following", (req, res) => {
+  const user = db.users.findById(req.params.id);
+  if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+  const list = db.users.findFollowing(user.id).map(u => ({
+    id:     u.id,
+    name:   u.name,
+    avatar: u.avatar,
+    tagline: u.tagline,
+    location: u.location,
+  }));
+  res.json({ success: true, count: list.length, data: list });
+});
+
+/* ─────────────────────────────────────────────────────────
+   GET /api/users/:id/friends
+   Returns mutual followers (both follow each other).
+   ───────────────────────────────────────────────────────── */
+router.get("/:id/friends", (req, res) => {
+  const user = db.users.findById(req.params.id);
+  if (!user) return res.status(404).json({ success: false, message: "User not found." });
+
+  const list = db.users.findFriends(user.id).map(u => ({
+    id:     u.id,
+    name:   u.name,
+    avatar: u.avatar,
+    tagline: u.tagline,
+    location: u.location,
+  }));
+  res.json({ success: true, count: list.length, data: list });
 });
 
 /* ─────────────────────────────────────────────────────────

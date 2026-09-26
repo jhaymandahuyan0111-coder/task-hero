@@ -190,6 +190,20 @@ const stmts = {
       VALUES (?, ?, ?)
     `),
     unfollow: db.prepare('DELETE FROM user_follows WHERE followerId = ? AND followingId = ?'),
+    // returns the user rows of everyone who follows :id
+    findFollowers: db.prepare(`
+      SELECT u.* FROM user_follows uf
+      JOIN users u ON u.id = uf.followerId
+      WHERE uf.followingId = ?
+      ORDER BY uf.createdAt DESC
+    `),
+    // returns the user rows of everyone :id follows
+    findFollowing: db.prepare(`
+      SELECT u.* FROM user_follows uf
+      JOIN users u ON u.id = uf.followingId
+      WHERE uf.followerId = ?
+      ORDER BY uf.createdAt DESC
+    `),
   },
 
   tasks: {
@@ -534,6 +548,26 @@ module.exports = {
 
     unfollow(followerId, followingId) {
       stmts.users.unfollow.run(followerId, followingId);
+    },
+
+    /** Returns slim user objects for everyone who follows userId */
+    findFollowers(userId) {
+      return stmts.users.findFollowers.all(userId).map(parseUser);
+    },
+
+    /** Returns slim user objects for everyone userId follows */
+    findFollowing(userId) {
+      return stmts.users.findFollowing.all(userId).map(parseUser);
+    },
+
+    /**
+     * Returns mutual followers — users where A follows B AND B follows A.
+     * These are the "friends" / mutuals.
+     */
+    findFriends(userId) {
+      const followers  = new Set(this.findFollowers(userId).map(u => u.id));
+      const following  = this.findFollowing(userId);
+      return following.filter(u => followers.has(u.id));
     },
 
     create(user) {
