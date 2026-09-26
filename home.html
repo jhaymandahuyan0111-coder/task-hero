@@ -111,7 +111,7 @@
 }
 .task-card {
     display: grid;
-    grid-template-columns: 140px 1fr 130px 100px 90px 110px;
+    grid-template-columns: 140px 1fr 130px 100px 160px 90px 110px;
     gap: 16px;
     align-items: center;
     padding: 14px 4px;
@@ -152,6 +152,35 @@
     text-overflow: ellipsis;
 }
 .task-meta-cell {
+    font-size: 12px;
+    color: var(--text-sub);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── POSTER CELL ──────────────────────────────────────── */
+.task-poster-cell {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+.task-poster-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.task-poster-name {
     font-size: 12px;
     color: var(--text-sub);
     white-space: nowrap;
@@ -227,6 +256,7 @@ body.dark-mode .no-results h3 { color: var(--text); }
     .category-tag { grid-column: 1; }
     .task-main    { grid-column: 1 / -1; }
     .task-meta-cell:first-of-type { grid-column: 1; }
+    .task-poster-cell { grid-column: 1; }
     .task-budget  { grid-column: 2; text-align: right; }
     .accept-button { grid-column: 1 / -1; }
     .search-box   { width: 100%; }
@@ -313,7 +343,12 @@ body.dark-mode .no-results h3 { color: var(--text); }
                 const result = await response.json();
                 if (!response.ok || !result.success) throw new Error(result.message || "Unable to load tasks.");
                 const user = currentUser();
-                allTasks = result.data.filter(t => t.status === "open" && (!user || t.postedBy !== user.id));
+                // Backend now filters orphan tasks and attaches poster; extra null-guard here for safety
+                allTasks = result.data.filter(t =>
+                    t.status === "open" &&
+                    t.poster !== null && t.poster !== undefined &&
+                    (!user || t.postedBy !== user.id)
+                );
                 renderTasks();
                 updateStats();
             } catch (error) {
@@ -333,7 +368,12 @@ body.dark-mode .no-results h3 { color: var(--text); }
                 grid.innerHTML = `<div class="no-results"><h3>No tasks found</h3><p>Try a different search or category filter.</p></div>`;
                 return;
             }
-            grid.innerHTML = filtered.map(task => `
+            grid.innerHTML = filtered.map(task => {
+                const poster = task.poster || {};
+                const avatarHtml = poster.avatar && poster.avatar.length > 2
+                    ? `<img src="${escHtml(poster.avatar)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="">`
+                    : escHtml((poster.avatar || (poster.name || "?").charAt(0)).toUpperCase());
+                return `
                 <div class="task-card" data-id="${task.id}">
                     <span class="category-tag">${escHtml(task.category)}</span>
                     <div class="task-main">
@@ -342,9 +382,14 @@ body.dark-mode .no-results h3 { color: var(--text); }
                     </div>
                     <span class="task-meta-cell">${escHtml(task.location)}</span>
                     <span class="task-meta-cell">${task.deadline ? formatDate(task.deadline) : "Flexible"}</span>
+                    <span class="task-poster-cell">
+                        <span class="task-poster-avatar">${avatarHtml}</span>
+                        <span class="task-poster-name">${escHtml(poster.name || "Unknown")}</span>
+                    </span>
                     <span class="task-budget">₱${Number(task.budget).toLocaleString()}</span>
                     <button class="accept-button" onclick="openAcceptModal('${task.id}')">Accept</button>
-                </div>`).join("");
+                </div>`;
+            }).join("");
         }
 
         function setFilter(cat, btn) {

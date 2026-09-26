@@ -328,8 +328,14 @@ body.dark-mode .empty-state h3  { color: var(--text); }
 
         async function confirmDelete() {
             if (!pendingDeleteId) return;
+            const user = currentUser();
+            if (!user) return;
             try {
-                const response = await fetch(`${window.TASKHERO_API_BASE}/tasks/${encodeURIComponent(pendingDeleteId)}`, { method: "DELETE" });
+                const response = await fetch(`${window.TASKHERO_API_BASE}/tasks/${encodeURIComponent(pendingDeleteId)}`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ userId: user.id }),
+                });
                 const result = await response.json();
                 if (!response.ok || !result.success) throw new Error(result.message || "Unable to delete task.");
                 closeDeleteModal();

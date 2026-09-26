@@ -35,12 +35,24 @@ const VALID_CATEGORIES = [
 router.get("/", (req, res) => {
   const { category, search, status, postedBy, acceptedBy } = req.query;
 
-  const result = db.tasks.findAll({ category, search, status, postedBy, acceptedBy });
+  const tasks = db.tasks.findAll({ category, search, status, postedBy, acceptedBy });
+
+  // Attach slim poster info to every task; drop tasks whose poster no longer
+  // exists in the database (orphan guard — prevents "no account posted" cards).
+  const data = tasks.reduce((acc, task) => {
+    const poster = db.users.findById(task.postedBy);
+    if (!poster) return acc; // skip orphaned tasks silently
+    acc.push({
+      ...task,
+      poster: { id: poster.id, name: poster.name, avatar: poster.avatar, rating: poster.rating },
+    });
+    return acc;
+  }, []);
 
   res.json({
     success: true,
-    count: result.length,
-    data: result,
+    count: data.length,
+    data,
   });
 });
 
