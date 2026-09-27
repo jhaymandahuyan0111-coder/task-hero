@@ -346,8 +346,7 @@ body.dark-mode .no-results h3 { color: var(--text); }
                 // Backend now filters orphan tasks and attaches poster; extra null-guard here for safety
                 allTasks = result.data.filter(t =>
                     t.status === "open" &&
-                    t.poster !== null && t.poster !== undefined &&
-                    (!user || t.postedBy !== user.id)
+                    t.poster !== null && t.poster !== undefined
                 );
                 renderTasks();
                 updateStats();
@@ -387,7 +386,9 @@ body.dark-mode .no-results h3 { color: var(--text); }
                         <span class="task-poster-name">${escHtml(poster.name || "Unknown")}</span>
                     </span>
                     <span class="task-budget">₱${Number(task.budget).toLocaleString()}</span>
-                    <button class="accept-button" onclick="openAcceptModal('${task.id}')">Accept</button>
+                    ${user && task.postedBy === user.id
+                        ? `<button class="accept-button" disabled title="You posted this task">Your task</button>`
+                        : `<button class="accept-button" onclick="openAcceptModal('${task.id}')">Accept</button>`}
                 </div>`;
             }).join("");
         }

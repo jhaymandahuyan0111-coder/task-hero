@@ -78,7 +78,8 @@ app.use(cors({
 // Parse JSON request bodies
 app.use(express.json());
 
-// Serve the frontend from the parent directory
+// Serve the built React frontend first, then the legacy pages during migration.
+app.use(express.static(path.join(__dirname, "..", "dist")));
 app.use(express.static(path.join(__dirname, "..")));
 
 /* ─────────────────────────────────────────────────────────
@@ -118,7 +119,10 @@ app.get("/api/health", (req, res) => {
 app.get("*", (req, res) => {
   // Only serve HTML for non-API routes
   if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(__dirname, "..", "home.html"));
+    const reactEntry = path.join(__dirname, "..", "dist", "index.html");
+    res.sendFile(reactEntry, (error) => {
+      if (error) res.sendFile(path.join(__dirname, "..", "home.html"));
+    });
   } else {
     res.status(404).json({ success: false, message: "API route not found." });
   }

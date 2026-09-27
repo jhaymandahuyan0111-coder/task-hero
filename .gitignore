@@ -1,5 +1,7 @@
 backend/node_modules/
 backend/taskhero.db*
+/node_modules/
+/dist/
 package-lock.json
 .env
 .env.*

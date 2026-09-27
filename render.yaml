@@ -3,7 +3,7 @@ services:
     name: taskhero-api
     runtime: node
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm --prefix .. install; npm --prefix .. run build; npm install
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
