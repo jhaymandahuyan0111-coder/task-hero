@@ -105,7 +105,7 @@ router.post("/", (req, res) => {
   db.notifications.create({
     id:        db.newId("notif-"),
     userId:    revieweeId,
-    icon:      "⭐",
+    icon:      "Review",
     text:      `${reviewer.name} left you a ${review.stars}-star review!`,
     read:      0,
     createdAt: review.createdAt,

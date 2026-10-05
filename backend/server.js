@@ -44,6 +44,7 @@
 const express       = require("express");
 const cors          = require("cors");
 const path          = require("path");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const taskRoutes         = require("./routes/tasks");
 const userRoutes         = require("./routes/users");
@@ -161,7 +162,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   const dbPath = require("path").join(__dirname, "taskhero.db");
   console.log("");
-  console.log("  🚀  TaskHero API is running!");
+  console.log("  TaskHero API is running");
   console.log("  ─────────────────────────────────────────");
   console.log(`  Local:    http://localhost:${PORT}`);
   console.log(`  API:      http://localhost:${PORT}/api/tasks`);

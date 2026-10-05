@@ -171,10 +171,8 @@ function with no competing `let` binding in scope.
 
 **Supporting Fixes (inline `onclick` → `data-*` delegation):**
 
-2. **Emoji pickers**: Replace `onclick="selectedCertIcon='🏆'"` style inline handlers in
-   `renderEmojiPicker()` with `data-picker="certIcon" data-emoji="🏆"` attributes. Add a single
-   `document.addEventListener("click", ...)` delegated handler that reads these attributes and
-   updates the appropriate `selected*` variable.
+2. **Profile categories**: Use standard select controls for certification and work categories.
+  Read the selected value when saving each profile entry; no icon picker is needed.
 
 3. **Banner picker**: Replace inline `onclick` in `renderBannerOptions()` (which contained full
    CSS gradient strings) with `data-val="..."` attributes on each banner option div. Add a

@@ -62,7 +62,7 @@
     - Wire up `renderWorkExp()`: reads from `profileData.workExp[]`; each entry renders as `.exp-entry` with `.exp-timeline-dot` (icon), `.exp-entry-title`, `.exp-entry-company`, `.exp-entry-years`, `.exp-entry-desc`; remove button (`.exp-entry-remove`) hidden via `IS_VIEW_MODE` guard; staggered `animation-delay` at `i * 0.08s`; empty state shows placeholder text
     - Wire up `addWorkExp()`: reads `we-title`, `we-company`, `we-years`, `we-desc` inputs; validates title and company are non-empty; pushes `{ icon: selectedWorkIcon, title, company, years, desc }` to `profileData.workExp`; calls `saveToStorage()`, `renderWorkExp()`, `closeModal('workExpModal')`, `showToast(...)`
     - Wire up `removeWorkExp(index)`: splices `profileData.workExp` at index; calls `saveToStorage()`, `renderWorkExp()`
-    - `openModal('workExpModal')` path: clears all inputs, resets `selectedWorkIcon = '💼'`, calls `renderEmojiPicker('workExpIconPicker', WORK_EXP_ICONS, 'workIcon')`
+    - `openModal('workExpModal')` path: clears all inputs and resets the work category select to `OFFICE`
     - _Requirements: 2.5_
 
   - [ ] 3.5 Implement Portfolio section functions
@@ -76,7 +76,7 @@
     - Wire up `renderCerts()`: reads from `profileData.certs[]`; each row renders as `.cert-item` with `.cert-icon`, `.cert-name`, `.cert-issuer` (+ year if present), `.cert-badge` "Verified"; `.cert-remove` button hidden via `IS_VIEW_MODE`; staggered `animation-delay` at `i * 0.08s`; empty state shows placeholder text
     - Wire up `addCert()`: reads `cert-name`, `cert-issuer`, `cert-year` inputs; validates name and issuer are non-empty; pushes `{ icon: selectedCertIcon, name, issuer, year }` to `profileData.certs`; calls `saveToStorage()`, `renderCerts()`, `closeModal('certModal')`, `showToast(...)`
     - Wire up `removeCert(index)`: splices `profileData.certs` at index; calls `saveToStorage()`, `renderCerts()`
-    - `openModal('certModal')` path: clears inputs, resets `selectedCertIcon = '🏆'`, calls `renderEmojiPicker('certIconPicker', CERT_ICONS, 'certIcon')`
+    - `openModal('certModal')` path: clears inputs and resets the certification category select to `CERT`
     - _Requirements: 2.7_
 
   - [ ] 3.7 Implement view mode guard

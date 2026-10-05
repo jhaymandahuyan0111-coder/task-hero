@@ -152,7 +152,7 @@ router.post("/", (req, res) => {
   db.notifications.create({
     id:        db.newId("notif-"),
     userId:    postedBy,
-    icon:      "🚀",
+    icon:      "Task posted",
     text:      `Your task "${task.title}" is now live!`,
     read:      0,
     createdAt: now,
@@ -210,7 +210,7 @@ router.patch("/:id/accept", (req, res) => {
   db.notifications.create({
     id:        db.newId("notif-"),
     userId:    task.postedBy,
-    icon:      "✅",
+    icon:      "Task accepted",
     text:      `${acceptor.name} accepted your task "${task.title}".`,
     read:      0,
     createdAt: now,
@@ -277,7 +277,7 @@ router.patch("/:id/complete", (req, res) => {
   db.notifications.create({
     id:        db.newId("notif-"),
     userId:    task.postedBy,
-    icon:      "🎉",
+    icon:      "Task completed",
     text:      `Task "${task.title}" has been completed!`,
     read:      0,
     createdAt: now,

@@ -386,7 +386,7 @@ if (seedCount === 0 && !demoDataPurged) {
       location:       'Los Angeles, CA',
       skills:         JSON.stringify(['Hardware Repair', 'Networking', 'Windows', 'Linux']),
       expertise:      JSON.stringify([{ name: 'IT Support', level: 'Expert' }]),
-      certs:          JSON.stringify([{ icon: '🏅', name: 'CompTIA A+', issuer: 'CompTIA', year: '2022' }]),
+      certs:          JSON.stringify([{ icon: 'CERT', name: 'CompTIA A+', issuer: 'CompTIA', year: '2022' }]),
       portfolio:      JSON.stringify([]),
       workExp:        JSON.stringify([]),
       contact:        JSON.stringify({ email: 'david@example.com', phone: '', web: '', linkedin: '', github: '' }),
@@ -503,6 +503,39 @@ if (seedCount === 0 && !demoDataPurged) {
     for (const t of tasks) stmts.tasks.insert.run(t);
   });
   insertTask(seedTasks);
+}
+
+const localAdminUsername = process.env.LOCAL_ADMIN_USERNAME?.trim().toLowerCase();
+const localAdminPassword = process.env.LOCAL_ADMIN_PASSWORD;
+
+if (!isProduction && localAdminUsername && localAdminPassword) {
+  const adminEmail = `${localAdminUsername}@localhost.test`;
+  const passwordHash = bcrypt.hashSync(localAdminPassword, 12);
+  const existingAdmin = stmts.users.findByEmail.get(adminEmail);
+
+  if (existingAdmin) {
+    db.prepare('UPDATE users SET password = ? WHERE email = ?').run(passwordHash, adminEmail);
+  } else {
+    stmts.users.insert.run({
+      id:             'local-admin',
+      name:           'TaskHero Admin',
+      email:          adminEmail,
+      password:       passwordHash,
+      avatar:         'A',
+      bio:            '',
+      tagline:        'Local administrator',
+      location:       '',
+      skills:         '[]',
+      expertise:      '[]',
+      certs:          '[]',
+      portfolio:      '[]',
+      workExp:        '[]',
+      contact:        '{}',
+      rating:         0,
+      tasksCompleted: 0,
+      joinedAt:       new Date().toISOString(),
+    });
+  }
 }
 
 // ── Exported API ──────────────────────────────────────────

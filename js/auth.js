@@ -57,7 +57,7 @@ function setMode(signup) {
   isSignup = signup;
 
   // Update heading
-  authHeading.textContent  = signup ? "Join TaskHero 🚀" : "Welcome back 👋";
+  authHeading.textContent  = signup ? "Join TaskHero" : "Welcome back";
   authSubtitle.textContent = signup
     ? "Create an account to post tasks, hire heroes, and build your reputation."
     : "Sign in to manage your tasks and connect with heroes.";
@@ -104,6 +104,13 @@ switchLine.addEventListener("click", (e) => {
 
 /* ── VALIDATION ───────────────────────────────────────────── */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LOCAL_ADMIN_USERNAME = "jhayadmin1220";
+
+function isLocalAdminLogin(identifier) {
+  return !isSignup &&
+    (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") &&
+    identifier.trim().toLowerCase() === LOCAL_ADMIN_USERNAME;
+}
 
 function showFieldError(el, msg) {
   el.textContent = msg;
@@ -162,7 +169,7 @@ function validateForm() {
     }
   }
 
-  if (!EMAIL_RE.test(email)) {
+  if (!EMAIL_RE.test(email) && !isLocalAdminLogin(email)) {
     showFieldError(emailError, "Enter a valid email address.");
     valid = false;
   }
@@ -191,7 +198,7 @@ function wirePasswordToggle(input, toggleBtn) {
   toggleBtn.addEventListener("click", () => {
     const isHidden = input.type === "password";
     input.type = isHidden ? "text" : "password";
-    toggleBtn.textContent = isHidden ? "🙈" : "👁";
+    toggleBtn.textContent = isHidden ? "Hide" : "Show";
     toggleBtn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
     input.focus();
   });
@@ -213,7 +220,7 @@ nameInput.addEventListener("blur", () => {
 
 emailInput.addEventListener("blur", () => {
   const v = emailInput.value.trim();
-  if (v.length > 0 && !EMAIL_RE.test(v)) {
+  if (v.length > 0 && !EMAIL_RE.test(v) && !isLocalAdminLogin(v)) {
     showFieldError(emailError, "Enter a valid email address.");
   } else {
     clearFieldError(emailError);
@@ -247,14 +254,14 @@ function setLoading(loading) {
 
   if (loading) {
     const label = isSignup ? "Creating account…" : "Signing in…";
-    submitBtn.innerHTML = `⏳ ${label}`;
+    submitBtn.textContent = label;
   } else {
     submitBtn.textContent = isSignup ? "Create account" : "Sign in";
   }
 }
 
 function setSuccess() {
-  submitBtn.textContent = "✅ Success!";
+  submitBtn.textContent = isSignup ? "Account created" : "Signed in";
   submitBtn.disabled = true;
 }
 
@@ -327,7 +334,7 @@ window.__googleAuthStart = function () {
 };
 
 window.__googleAuthSuccess = function () {
-  googleBtn.innerHTML = `<span class="google-g" aria-hidden="true">✓</span> Signed in!`;
+  googleBtn.textContent = "Signed in";
   googleBtn.disabled  = true;
 };
 

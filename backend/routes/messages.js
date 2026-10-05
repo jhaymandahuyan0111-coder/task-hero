@@ -156,7 +156,7 @@ router.post("/", (req, res) => {
     db.notifications.create({
       id:        db.newId("notif-"),
       userId:    recipientId,
-      icon:      "💬",
+      icon:      "Message",
       text:      `${sender.name} sent you a message${task ? ` about "${task.title}"` : ""}.`,
       read:      0,
       createdAt: now,

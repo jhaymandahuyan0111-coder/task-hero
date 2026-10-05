@@ -14,20 +14,22 @@ function go(path) {
 
 function Navigation() {
   return (
-    <nav className="navbar">
-      <div className="logo" onClick={() => go("index.html")} title="TaskHero Home">
-        <div className="logo-icon">T</div>TaskHero
-      </div>
-      <div className="nav-links">
-        <button className="nav-button nav-icon-btn active" onClick={() => go("index.html")} title="Home" aria-label="Home">⌂</button>
-        <button className="nav-button nav-icon-btn" onClick={() => go("my-task.html")} title="My Tasks" aria-label="My Tasks">✓</button>
-        <button className="nav-button nav-icon-btn" onClick={() => go("messeges-page.html")} title="Messages" aria-label="Messages">▱</button>
-      </div>
-      <div className="nav-actions">
-        <button className="icon-button post-task-button" onClick={() => go("post-task.html")} title="Post a Task" aria-label="Post a Task">+ Post Task</button>
-        <button className="icon-button" onClick={() => go("auth.html")} title="Account" aria-label="Account">◉</button>
-      </div>
-    </nav>
+    <header className="app-header">
+      <nav className="navbar" aria-label="Main navigation">
+        <a className="logo" href="index.html" aria-label="TaskHero home">
+          <span className="logo-icon" aria-hidden="true">T</span><span>TaskHero</span>
+        </a>
+        <div className="nav-links">
+          <a className="nav-link active" href="index.html" aria-current="page">Browse tasks</a>
+          <a className="nav-link" href="my-task.html">My tasks</a>
+          <a className="nav-link" href="messeges-page.html">Messages</a>
+        </div>
+        <div className="nav-actions">
+          <a className="primary-button post-task-button" href="post-task.html">Post a task</a>
+          <a className="account-link" href="auth.html">Sign in</a>
+        </div>
+      </nav>
+    </header>
   );
 }
 
@@ -37,9 +39,12 @@ function Home() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
   const user = currentUser();
 
   async function loadTasks() {
+    setLoading(true);
+    setError("");
     try {
       const [taskResponse, statsResponse] = await Promise.all([
         fetch(`${API_BASE}/tasks`),
@@ -52,6 +57,8 @@ function Home() {
       if (statsResult.success) setStats(statsResult.data);
     } catch (loadError) {
       setError(loadError.message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -82,36 +89,53 @@ function Home() {
       <Navigation />
       <section className="page-container">
         <div className="page-header">
-          <h1>Browse Tasks</h1>
-          <div className="header-right">
-            <div className="search-box"><span className="search-icon">⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks, locations..." /></div>
-            <button className="primary-button" onClick={() => go("post-task.html")}>+ Post Task</button>
+          <div>
+            <h1>Browse tasks</h1>
+            <p className="page-intro">Open requests from people in your area.</p>
           </div>
+          <label className="search-box">
+            <svg className="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3" stroke="currentColor" strokeWidth="1.8" /><path d="m15.5 15.5 4.2 4.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+            <span className="sr-only">Search tasks</span>
+            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks or locations" />
+          </label>
         </div>
         <div className="stats-row">
-          <div className="stat-item"><div className="stat-number">{stats.openTasks ?? "—"}</div><div className="stat-label">Open Tasks</div></div>
+          <div className="stat-item"><div className="stat-number">{stats.openTasks ?? "—"}</div><div className="stat-label">Open tasks</div></div>
           <div className="stat-item"><div className="stat-number">{stats.completedTasks ?? "—"}</div><div className="stat-label">Completed</div></div>
-          <div className="stat-item"><div className="stat-number">{stats.activeUsers ?? "—"}</div><div className="stat-label">Active Users</div></div>
-          <div className="stat-item"><div className="stat-number">₱{Number(stats.totalPaid || 0).toLocaleString()}</div><div className="stat-label">Paid Out</div></div>
+          <div className="stat-item"><div className="stat-number">{stats.activeUsers ?? "—"}</div><div className="stat-label">Active members</div></div>
+          <div className="stat-item"><div className="stat-number">{stats.totalPaid == null ? "—" : `₱${Number(stats.totalPaid).toLocaleString()}`}</div><div className="stat-label">Paid to helpers</div></div>
         </div>
-        <div className="filter-bar">
+        <div className="filter-bar" role="group" aria-label="Filter tasks by category">
           {["all", "Image Editing", "Delivery", "Computer / IT", "Cleaning", "Moving", "Graphic Design", "Other"].map((category) => (
-            <button key={category} className={`filter-btn ${filter === category ? "active" : ""}`} onClick={() => setFilter(category)}>{category === "all" ? "All" : category}</button>
+            <button key={category} type="button" className={`filter-btn ${filter === category ? "active" : ""}`} aria-pressed={filter === category} onClick={() => setFilter(category)}>{category === "all" ? "All tasks" : category}</button>
           ))}
         </div>
-        <div className="task-grid">
-          {error && <div className="no-results"><h3>Unable to load tasks</h3><p>{error}</p></div>}
-          {!error && !visibleTasks.length && <div className="no-results"><h3>No tasks found</h3><p>Try a different search or category filter.</p></div>}
+        <div className="results-heading">
+          <h2>Available tasks</h2>
+          {!loading && !error && <span>{visibleTasks.length} {visibleTasks.length === 1 ? "task" : "tasks"}</span>}
+        </div>
+        <div className="task-grid" aria-live="polite">
+          {loading && <div className="no-results"><span className="loading-indicator" aria-hidden="true" /><h3>Finding available tasks</h3><p>Just a moment while we load the latest listings.</p></div>}
+          {error && <div className="no-results"><h3>We couldn’t load tasks</h3><p>{error}</p><button className="secondary-button" type="button" onClick={loadTasks}>Try again</button></div>}
+          {!loading && !error && !visibleTasks.length && <div className="no-results"><h3>No tasks match your search</h3><p>Try another keyword or choose a different category.</p></div>}
           {visibleTasks.map((task) => (
             <div className="task-card" key={task.id}>
-              <span className="category-tag">{task.category}</span>
-              <div className="task-main"><h3>{task.title}</h3><p className="task-desc">{task.description}</p></div>
-              <span className="task-meta-cell">{task.location}</span><span className="task-meta-cell">{task.deadline || "Flexible"}</span>
-              <span className="task-poster-cell"><span className="task-poster-name">{task.poster.name}</span></span>
-              <span className="task-budget">₱{Number(task.budget).toLocaleString()}</span>
-              {user && task.postedBy === user.id
-                ? <button className="accept-button" disabled>Your task</button>
-                : <button className="accept-button" onClick={() => acceptTask(task)}>Accept</button>}
+              <div className="task-card-main">
+                <span className="category-tag">{task.category}</span>
+                <h3>{task.title}</h3>
+                <p className="task-desc">{task.description}</p>
+                <div className="task-details">
+                  <span><strong>Location</strong>{task.location}</span>
+                  <span><strong>Due</strong>{task.deadline || "Flexible"}</span>
+                  <span><strong>Posted by</strong>{task.poster.name}</span>
+                </div>
+              </div>
+              <div className="task-card-action">
+                <div><span className="budget-label">Budget</span><strong className="task-budget">₱{Number(task.budget).toLocaleString()}</strong></div>
+                {user && task.postedBy === user.id
+                  ? <button className="accept-button" disabled>Your task</button>
+                  : <button className="accept-button" onClick={() => acceptTask(task)}>Accept task</button>}
+              </div>
             </div>
           ))}
         </div>

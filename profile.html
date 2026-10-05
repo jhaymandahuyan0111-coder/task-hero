@@ -392,27 +392,6 @@ body.view-mode .avatar-ring { cursor: default; }
 textarea.edit-input { min-height: 100px; resize: vertical; line-height: 1.6; }
 .char-count { font-size: 11px; color: var(--text-sub); text-align: right; margin-top: 3px; }
 
-.emoji-picker-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; justify-content: flex-start; }
-.emoji-option {
-    width: 38px; height: 38px; border-radius: 8px; font-size: 20px;
-    display: flex; align-items: center; justify-content: center;
-    border: 1px solid var(--border); cursor: pointer;
-    background: var(--surface); transition: border-color 0.15s;
-}
-.emoji-option:hover { border-color: var(--primary); }
-.emoji-option.selected { border-color: var(--primary); background: rgba(91,75,248,0.08); }
-
-/* Portfolio thumbnail picker */
-.emoji-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 6px; margin-bottom: 12px; }
-.thumb-option {
-    height: 48px; border-radius: 8px; font-size: 24px;
-    display: flex; align-items: center; justify-content: center;
-    background: var(--surface);
-    cursor: pointer; border: 1px solid var(--border); transition: border-color 0.15s;
-}
-.thumb-option:hover { border-color: var(--primary); }
-.thumb-option.selected { border-color: var(--primary); background: rgba(91,75,248,0.08); }
-
 /* ── DARK MODE ────────────────────────────────────────── */
 body.dark-mode .hero-card,
 body.dark-mode .section-card,
@@ -438,8 +417,6 @@ body.dark-mode .portfolio-add { border-color: var(--border); }
 body.dark-mode .skill-input { background: var(--surface); border-color: var(--border); color: var(--text); }
 body.dark-mode .edit-input  { background: var(--surface); border-color: var(--border); color: var(--text); }
 body.dark-mode .edit-field label { color: var(--text); }
-body.dark-mode .emoji-option { background: var(--surface); border-color: var(--border); }
-body.dark-mode .thumb-option { background: var(--surface); border-color: var(--border); }
 body.dark-mode .rating-summary { background: var(--surface); border-color: var(--border); }
 body.dark-mode .exp-bar-bg { background: var(--surface); border-color: var(--border); }
 body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color: rgba(22,163,74,0.3); }
@@ -479,7 +456,7 @@ body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color:
         <div>
           <div class="hero-name-row">
             <span class="hero-name" id="displayName">Your name</span>
-            <span class="verified-badge">✓ Verified</span>
+            <span class="verified-badge">Verified</span>
           </div>
           <div class="hero-role">
             <span class="role-pill freelancer">Freelancer</span>
@@ -602,7 +579,7 @@ body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color:
     <div class="rating-summary">
       <div class="rating-big" id="bigRating">—</div>
       <div>
-        <div class="rating-stars-big" id="bigStars">☆☆☆☆☆</div>
+        <div class="rating-stars-big" id="bigStars">No rating</div>
         <div class="rating-count" id="ratingCount">No reviews yet</div>
       </div>
     </div>
@@ -678,11 +655,11 @@ body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color:
     <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)">
       <button id="bannerTabColor" onclick="switchBannerTab('color')"
         style="flex:1;padding:8px;border:none;background:none;font:inherit;font-size:13px;font-weight:600;cursor:pointer;color:var(--primary);border-bottom:2px solid var(--primary);transition:color 0.15s">
-        🎨 Color
+        Color
       </button>
       <button id="bannerTabPhoto" onclick="switchBannerTab('photo')"
         style="flex:1;padding:8px;border:none;background:none;font:inherit;font-size:13px;font-weight:500;cursor:pointer;color:var(--text-sub);border-bottom:2px solid transparent;transition:color 0.15s">
-        🖼 Photo
+        Photo
       </button>
     </div>
 
@@ -760,8 +737,13 @@ body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color:
     <div class="edit-field"><label>Issuing Organization</label><input class="edit-input" id="cert-issuer" placeholder="e.g. Google, Coursera, TESDA" maxlength="60"></div>
     <div class="edit-field"><label>Year</label><input class="edit-input" id="cert-year" placeholder="e.g. 2025" maxlength="4" type="number" min="1980" max="2099"></div>
     <div class="edit-field">
-      <label>Icon</label>
-      <div class="emoji-picker-row" id="certIconPicker"></div>
+      <label for="certIconPicker">Category</label>
+      <select class="edit-input" id="certIconPicker">
+        <option value="CERT">Certification</option><option value="EDUCATION">Education</option>
+        <option value="LICENSE">License</option><option value="AWARD">Award</option>
+        <option value="TECH">Technology</option><option value="DESIGN">Design</option>
+        <option value="SAFETY">Safety</option><option value="DATA">Data</option>
+      </select>
     </div>
     <div class="modal-buttons">
       <button class="modal-cancel" onclick="closeModal('certModal')">Cancel</button>
@@ -782,8 +764,15 @@ body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color:
       <textarea class="edit-input" id="we-desc" placeholder="Key achievements, tools used…" maxlength="300" style="min-height:80px"></textarea>
     </div>
     <div class="edit-field">
-      <label>Icon</label>
-      <div class="emoji-picker-row" id="workExpIconPicker"></div>
+      <label for="workExpIconPicker">Category</label>
+      <select class="edit-input" id="workExpIconPicker">
+        <option value="OFFICE">Office</option><option value="TECH">Technology</option>
+        <option value="DESIGN">Design</option><option value="TOOLS">Tools</option>
+        <option value="LOGISTICS">Logistics</option><option value="DRIVING">Driving</option>
+        <option value="MEDIA">Media</option><option value="WRITING">Writing</option>
+        <option value="WEB">Web</option><option value="RETAIL">Retail</option>
+        <option value="TEAM">Team</option>
+      </select>
     </div>
     <div class="modal-buttons">
       <button class="modal-cancel" onclick="closeModal('workExpModal')">Cancel</button>
@@ -801,8 +790,15 @@ body.dark-mode .verified-badge { background: rgba(22,163,74,0.15); border-color:
     <div class="edit-field"><label>Category Tag (optional)</label><input class="edit-input" id="port-cat" placeholder="e.g. Design, Dev, Photography" maxlength="30"></div>
     <div class="edit-field"><label>Project Link (optional)</label><input class="edit-input" id="port-link" placeholder="https://…" type="url"></div>
     <div class="edit-field">
-      <label>Thumbnail</label>
-      <div class="emoji-grid" id="thumbPicker"></div>
+      <label for="thumbPicker">Category</label>
+      <select class="edit-input" id="thumbPicker">
+        <option value="DESIGN">Design</option><option value="SOFTWARE">Software</option>
+        <option value="PHOTO">Photography</option><option value="VIDEO">Video</option>
+        <option value="WRITING">Writing</option><option value="TOOLS">Tools</option>
+        <option value="DELIVERY">Delivery</option><option value="CLEANING">Cleaning</option>
+        <option value="DRIVING">Driving</option><option value="MUSIC">Music</option>
+        <option value="WEB">Web</option><option value="DATA">Data</option>
+      </select>
     </div>
     <div class="modal-buttons">
       <button class="modal-cancel" onclick="closeModal('portfolioModal')">Cancel</button>
@@ -824,9 +820,6 @@ const DEFAULT_PROFILE = {
 
 const REVIEWS = [];
 
-const CERT_ICONS     = ["🏆","🎓","📜","🎖","⭐","💡","🔬","💻","🎨","🛡","🌐","📊"];
-const WORK_EXP_ICONS = ["💼","🖥","🎨","🔧","📦","🚗","🎬","📸","📝","🌐","🛒","🤝","🏢","🎓","⚙️","🔑"];
-const THUMB_EMOJIS   = ["🎨","💻","📸","🎬","📝","🛠","📦","🧹","🚗","🎵","🌐","📊","🔧","💼","🎯","🚀","⚡","🌟","🦄","✨"];
 const BANNER_COLORS  = [
     { label:"Violet",    val:"#5b4bf8" },
     { label:"Slate",     val:"#334155" },
@@ -858,13 +851,15 @@ const IS_VIEW_MODE  = _urlParams.has("view") || !!VIEW_USER_ID;
 if (IS_VIEW_MODE) document.body.classList.add("view-mode");
 
 let selectedBanner = profileData.banner;
-let selectedCertIcon = "🏆";
-let selectedWorkIcon = "💼";
-let selectedThumb    = "🎨";
 let tempExpertise    = [];
 
 function escHtml(str) {
     return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function plainIconLabel(value, fallback) {
+  const label = String(value || "").trim();
+  return label && !/\p{Extended_Pictographic}/u.test(label) ? escHtml(label) : fallback;
 }
 
 function saveToStorage() { localStorage.setItem(STORAGE_KEY, JSON.stringify(profileData)); }
@@ -918,22 +913,19 @@ function openModal(id) {
         document.getElementById("cert-name").value   = "";
         document.getElementById("cert-issuer").value = "";
         document.getElementById("cert-year").value   = "";
-        selectedCertIcon = "🏆";
-        renderEmojiPicker("certIconPicker", CERT_ICONS, "certIcon");
+        document.getElementById("certIconPicker").value = "CERT";
     } else if (id === "workExpModal") {
         document.getElementById("we-title").value   = "";
         document.getElementById("we-company").value = "";
         document.getElementById("we-years").value   = "";
         document.getElementById("we-desc").value    = "";
-        selectedWorkIcon = "💼";
-        renderEmojiPicker("workExpIconPicker", WORK_EXP_ICONS, "workIcon");
+        document.getElementById("workExpIconPicker").value = "OFFICE";
     } else if (id === "portfolioModal") {
         document.getElementById("port-title").value = "";
         document.getElementById("port-desc").value  = "";
         document.getElementById("port-cat").value   = "";
         document.getElementById("port-link").value  = "";
-        selectedThumb = "🎨";
-        renderThumbPicker();
+        document.getElementById("thumbPicker").value = "DESIGN";
     }
     document.getElementById(id).classList.add("open");
 }
@@ -943,22 +935,6 @@ document.addEventListener("click", function(e) { if (e.target.classList.contains
 function handleAvatarClick() { if (!IS_VIEW_MODE) openModal("avatarModal"); }
 
 /* ── PICKERS ──────────────────────────────────────────── */
-function renderEmojiPicker(containerId, emojis, pickerKey) {
-    const container = document.getElementById(containerId);
-    const current = pickerKey === "certIcon" ? selectedCertIcon : selectedWorkIcon;
-    container.innerHTML = emojis.map(e => `<div class="emoji-option${e === current ? " selected" : ""}" data-picker="${pickerKey}" data-emoji="${e}">${e}</div>`).join("");
-}
-
-document.addEventListener("click", function(e) {
-    const opt = e.target.closest ? e.target.closest(".emoji-option") : null;
-    if (!opt) return;
-    const picker = opt.getAttribute("data-picker");
-    const emoji  = opt.getAttribute("data-emoji");
-    if (!picker || !emoji) return;
-    if (picker === "certIcon") { selectedCertIcon = emoji; renderEmojiPicker("certIconPicker", CERT_ICONS, "certIcon"); }
-    else if (picker === "workIcon") { selectedWorkIcon = emoji; renderEmojiPicker("workExpIconPicker", WORK_EXP_ICONS, "workIcon"); }
-});
-
 function renderBannerOptions() {
     const container = document.getElementById("bannerOptions");
     container.innerHTML = BANNER_COLORS.map(g => `<div class="banner-opt" data-val="${escHtml(g.val)}" style="width:80px;height:48px;border-radius:8px;cursor:pointer;background:${g.val};border:2px solid ${g.val === selectedBanner ? "var(--primary)" : "transparent"};display:flex;align-items:flex-end;padding:4px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.85)">${g.label}</div>`).join("");
@@ -1021,18 +997,6 @@ document.addEventListener("click", function(e) {
     if (!opt) return;
     selectedBanner = opt.getAttribute("data-val");
     renderBannerOptions();
-});
-
-function renderThumbPicker() {
-    const container = document.getElementById("thumbPicker");
-    container.innerHTML = THUMB_EMOJIS.map(e => `<div class="thumb-option${e === selectedThumb ? " selected" : ""}" data-thumb="${e}">${e}</div>`).join("");
-}
-
-document.addEventListener("click", function(e) {
-    const opt = e.target.closest ? e.target.closest(".thumb-option") : null;
-    if (!opt) return;
-    selectedThumb = opt.getAttribute("data-thumb");
-    renderThumbPicker();
 });
 
 function renderExpertiseEditor() {
@@ -1125,7 +1089,7 @@ function addCert() {
     const issuer = document.getElementById("cert-issuer").value.trim();
     const year   = document.getElementById("cert-year").value.trim();
     if (!name || !issuer) { showToast("Please fill in name and issuer.", "error"); return; }
-    profileData.certs.push({ icon: selectedCertIcon, name, issuer, year });
+    profileData.certs.push({ icon: document.getElementById("certIconPicker").value, name, issuer, year });
     saveToStorage(); renderCerts(); closeModal("certModal"); showToast("Certification added!", "success");
 }
 
@@ -1137,7 +1101,7 @@ function addWorkExp() {
     const years   = document.getElementById("we-years").value.trim();
     const desc    = document.getElementById("we-desc").value.trim();
     if (!title || !company) { showToast("Please fill in title and company.", "error"); return; }
-    profileData.workExp.push({ icon: selectedWorkIcon, title, company, years, desc });
+    profileData.workExp.push({ icon: document.getElementById("workExpIconPicker").value, title, company, years, desc });
     saveToStorage(); renderWorkExp(); closeModal("workExpModal"); showToast("Work experience added!", "success");
 }
 
@@ -1149,7 +1113,7 @@ function addPortfolioItem() {
     const cat   = document.getElementById("port-cat").value.trim();
     const link  = document.getElementById("port-link").value.trim();
     if (!title) { showToast("Please enter a project title.", "error"); return; }
-    profileData.portfolio.push({ icon: selectedThumb, title, desc, cat, link });
+    profileData.portfolio.push({ icon: document.getElementById("thumbPicker").value, title, desc, cat, link });
     saveToStorage(); renderPortfolio(); closeModal("portfolioModal"); showToast("Portfolio item added!", "success");
 }
 
@@ -1248,11 +1212,11 @@ function renderContact() {
     const list = document.getElementById("contactList");
     const c = profileData.contact;
     const items = [
-        { icon:"📧", val: c.email,    lbl:"Email" },
-        { icon:"📱", val: c.phone,    lbl:"Phone / Messenger" },
-        { icon:"🌐", val: c.web,      lbl:"Website" },
-        { icon:"💼", val: c.linkedin, lbl:"LinkedIn" },
-        { icon:"🐙", val: c.github,   lbl:"GitHub" },
+        { icon:"EMAIL", val: c.email,    lbl:"Email" },
+        { icon:"PHONE", val: c.phone,   lbl:"Phone / Messenger" },
+        { icon:"WEB", val: c.web,      lbl:"Website" },
+        { icon:"LINKEDIN", val: c.linkedin, lbl:"LinkedIn" },
+        { icon:"GITHUB", val: c.github,   lbl:"GitHub" },
     ].filter(x => x.val);
     if (!items.length) { list.innerHTML = '<p style="color:var(--text-sub);font-size:13px">No contact info added yet.</p>'; return; }
     list.innerHTML = items.map(x => `<div class="contact-item"><span class="contact-icon">${x.icon}</span><div><div class="contact-val">${escHtml(x.val)}</div><div class="contact-lbl">${x.lbl}</div></div></div>`).join("");
@@ -1263,7 +1227,7 @@ function renderCerts() {
     if (!profileData.certs.length) { list.innerHTML = '<p style="color:var(--text-sub);font-size:13px">No certifications added yet.</p>'; return; }
     list.innerHTML = profileData.certs.map((c, i) => {
         const removeBtn = IS_VIEW_MODE ? "" : `<button class="cert-remove" onclick="removeCert(${i})" title="Remove">✕</button>`;
-        return `<div class="cert-item"><span class="cert-icon">${c.icon}</span><div class="cert-info"><div class="cert-name">${escHtml(c.name)}</div><div class="cert-issuer">${escHtml(c.issuer)}${c.year ? " · " + escHtml(c.year) : ""}</div></div><span class="cert-badge">Verified</span>${removeBtn}</div>`;
+        return `<div class="cert-item"><span class="cert-icon">${plainIconLabel(c.icon, "CERT")}</span><div class="cert-info"><div class="cert-name">${escHtml(c.name)}</div><div class="cert-issuer">${escHtml(c.issuer)}${c.year ? " · " + escHtml(c.year) : ""}</div></div><span class="cert-badge">Verified</span>${removeBtn}</div>`;
     }).join("");
 }
 
@@ -1272,7 +1236,7 @@ function renderWorkExp() {
     if (!profileData.workExp.length) { list.innerHTML = '<p style="color:var(--text-sub);font-size:13px">No work experience added yet.</p>'; return; }
     list.innerHTML = profileData.workExp.map((w, i) => {
         const removeBtn = IS_VIEW_MODE ? "" : `<button class="exp-entry-remove" onclick="removeWorkExp(${i})" title="Remove">✕</button>`;
-        return `<div class="exp-entry"><div class="exp-timeline-dot">${w.icon}</div><div class="exp-entry-info"><div class="exp-entry-title">${escHtml(w.title)}</div><div class="exp-entry-company">${escHtml(w.company)}</div>${w.years ? `<div class="exp-entry-years">${escHtml(w.years)}</div>` : ""}${w.desc ? `<div class="exp-entry-desc">${escHtml(w.desc)}</div>` : ""}</div>${removeBtn}</div>`;
+        return `<div class="exp-entry"><div class="exp-timeline-dot">${plainIconLabel(w.icon, "WORK")}</div><div class="exp-entry-info"><div class="exp-entry-title">${escHtml(w.title)}</div><div class="exp-entry-company">${escHtml(w.company)}</div>${w.years ? `<div class="exp-entry-years">${escHtml(w.years)}</div>` : ""}${w.desc ? `<div class="exp-entry-desc">${escHtml(w.desc)}</div>` : ""}</div>${removeBtn}</div>`;
     }).join("");
 }
 
@@ -1282,7 +1246,7 @@ function renderPortfolio() {
         const removeBtn = IS_VIEW_MODE ? "" : `<button class="port-del" onclick="removePortfolioItem(${i})" title="Remove">✕</button>`;
         const catTag  = p.cat  ? `<span class="portfolio-cat-tag">${escHtml(p.cat)}</span>` : "";
         const linkTag = p.link ? `<a class="portfolio-link" href="${escHtml(p.link)}" target="_blank" rel="noopener">View project</a>` : "";
-        return `<div class="portfolio-item"><div class="portfolio-thumb">${p.icon}</div><div class="portfolio-info"><h4>${escHtml(p.title)}</h4><p>${escHtml(p.desc)}</p>${catTag}${linkTag}</div>${removeBtn}</div>`;
+        return `<div class="portfolio-item"><div class="portfolio-thumb">${plainIconLabel(p.icon, "PROJECT")}</div><div class="portfolio-info"><h4>${escHtml(p.title)}</h4><p>${escHtml(p.desc)}</p>${catTag}${linkTag}</div>${removeBtn}</div>`;
     }).join("");
     if (!IS_VIEW_MODE) {
         html += `<div class="portfolio-add" onclick="openModal('portfolioModal')"><span style="font-size:24px">+</span><span>Add Work Sample</span></div>`;
@@ -1305,9 +1269,7 @@ function renderStats() {
     document.getElementById("statRating").innerText = avgRating;
     document.getElementById("statEarned").innerText = "₱" + (earned + 1800).toLocaleString();
     document.getElementById("bigRating").innerText  = avgRating;
-    document.getElementById("bigStars").innerText   = REVIEWS.length
-        ? "★".repeat(Math.round(avgRating)) + "☆".repeat(5 - Math.round(avgRating))
-        : "☆☆☆☆☆";
+    document.getElementById("bigStars").innerText = REVIEWS.length ? `${avgRating} out of 5` : "No rating";
     document.getElementById("ratingCount").innerText = REVIEWS.length ? REVIEWS.length + " reviews" : "No reviews yet";
 }
 
@@ -1324,7 +1286,7 @@ function animateCount(id, target) {
 
 function renderReviews() {
     const list = document.getElementById("reviewsList");
-    list.innerHTML = REVIEWS.map(r => `<div class="review-item"><div class="review-top"><div class="review-avatar">${r.avatar}</div><div class="review-meta"><div class="review-name">${r.name}</div><div class="review-task">for: ${r.task}</div></div><div class="stars">${"★".repeat(r.stars)}${"☆".repeat(5 - r.stars)}</div></div><div class="review-text">"${escHtml(r.text)}"</div></div>`).join("");
+    list.innerHTML = REVIEWS.map(r => `<div class="review-item"><div class="review-top"><div class="review-avatar">${r.avatar}</div><div class="review-meta"><div class="review-name">${r.name}</div><div class="review-task">for: ${r.task}</div></div><div class="stars">${r.stars} / 5</div></div><div class="review-text">"${escHtml(r.text)}"</div></div>`).join("");
 }
 
 /* ── API PROFILE LOADER (for ?userId= view) ───────────── */
@@ -1384,9 +1346,7 @@ async function loadApiUserProfile(userId) {
         document.getElementById("bigRating").innerText  = rating;
 
         const ratingNum = parseFloat(rating);
-        document.getElementById("bigStars").innerText   = !isNaN(ratingNum)
-            ? "★".repeat(Math.round(ratingNum)) + "☆".repeat(5 - Math.round(ratingNum))
-            : "☆☆☆☆☆";
+        document.getElementById("bigStars").innerText = !isNaN(ratingNum) ? `${ratingNum.toFixed(1)} out of 5` : "No rating";
         document.getElementById("ratingCount").innerText = u.tasksCompleted
             ? `${u.tasksCompleted} tasks completed`
             : "No reviews yet";
@@ -1405,7 +1365,7 @@ async function loadApiUserProfile(userId) {
 
                 const msgBtn = document.createElement("button");
                 msgBtn.className = "btn-primary";
-                msgBtn.textContent = "✉ Message";
+                msgBtn.textContent = "Message";
                 msgBtn.onclick = () => requireAuth("messeges-page.html");
                 heroActions.prepend(msgBtn);
 

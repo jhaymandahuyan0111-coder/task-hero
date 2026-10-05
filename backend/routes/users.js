@@ -7,6 +7,11 @@ const express = require("express");
 const router  = express.Router();
 const bcrypt  = require("bcryptjs");
 const db      = require("../db");
+const localAdminEnabled = process.env.NODE_ENV !== "production" && process.env.RENDER !== "true";
+
+function isLocalOrigin(origin) {
+  return /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin || "");
+}
 
 /* ─────────────────────────────────────────────────────────
    HELPER: strip password from user object
@@ -333,7 +338,18 @@ router.post("/login", (req, res) => {
     });
   }
 
-  const user = db.users.findByEmail(email);
+  const username = String(email).trim().toLowerCase();
+  const isLocalAdminLogin = Boolean(
+    localAdminEnabled &&
+    process.env.LOCAL_ADMIN_USERNAME &&
+    process.env.LOCAL_ADMIN_PASSWORD &&
+    username === process.env.LOCAL_ADMIN_USERNAME.trim().toLowerCase() &&
+    isLocalOrigin(req.get("origin")),
+  );
+  const accountEmail = isLocalAdminLogin
+    ? `${process.env.LOCAL_ADMIN_USERNAME.trim().toLowerCase()}@localhost.test`
+    : username;
+  const user = db.users.findByEmail(accountEmail);
 
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({

@@ -11,14 +11,14 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --primary:    #5b4bf8;
-      --primary-hov:#4535d4;
-      --surface:    #f8f8fb;
-      --bg:         #f4f4f8;
+      --primary:    #287052;
+      --primary-hov:#1d5a40;
+      --surface:    #f0f4ef;
+      --bg:         #f6f8f5;
       --card:       #ffffff;
-      --border:     #e5e5ea;
-      --text:       #111118;
-      --text-sub:   #6b6b80;
+      --border:     #dfe6de;
+      --text:       #202a23;
+      --text-sub:   #647168;
       --danger:     #dc2626;
       --shadow:     0 2px 8px rgba(0,0,0,0.1);
     }
@@ -128,7 +128,7 @@
     .field-wrap input::placeholder { color: #aaaabc; }
     .field-wrap input:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(91,75,248,0.1);
+      box-shadow: 0 0 0 3px rgba(40,112,82,0.12);
     }
     .field-wrap input.has-toggle { padding-right: 44px; }
 
@@ -345,7 +345,7 @@
           <label for="passwordInput">Password</label>
           <div class="field-wrap">
             <input type="password" id="passwordInput" name="password" autocomplete="current-password" placeholder="Min. 6 characters" required minlength="6" class="has-toggle" aria-describedby="passwordError" />
-            <button type="button" class="pw-toggle" id="pwToggle1" aria-label="Show password">👁</button>
+            <button type="button" class="pw-toggle" id="pwToggle1" aria-label="Show password">Show</button>
           </div>
           <span class="field-error" id="passwordError" role="alert" aria-live="polite"></span>
           <a href="#" class="forgot-link" id="forgotLink">Forgot password?</a>
@@ -356,7 +356,7 @@
           <label for="confirmInput">Confirm Password</label>
           <div class="field-wrap">
             <input type="password" id="confirmInput" name="confirmPassword" autocomplete="new-password" placeholder="Repeat your password" class="has-toggle" aria-describedby="confirmError" />
-            <button type="button" class="pw-toggle" id="pwToggle2" aria-label="Show confirm password">👁</button>
+            <button type="button" class="pw-toggle" id="pwToggle2" aria-label="Show confirm password">Show</button>
           </div>
           <span class="field-error" id="confirmError" role="alert" aria-live="polite"></span>
         </div>
@@ -396,8 +396,12 @@
      * ID from https://console.cloud.google.com/
      * (APIs & Services → Credentials → Web application)
      *
-     * Authorised JavaScript origins must include:
-     *   http://localhost   (or whatever host you serve from)
+    * Add the exact frontend origins in Google Cloud Console:
+    *   http://localhost:5173
+    *   http://127.0.0.1:5173
+    *   http://localhost:3000       (if served by the backend)
+    *   http://127.0.0.1:3000       (if served by the backend)
+    *   https://jhaymandahuyan0111-coder.github.io
      */
     window.GOOGLE_CLIENT_ID = "890510971599-84sqo28pemd5mttle6f6cjntau2kasdj.apps.googleusercontent.com";
 

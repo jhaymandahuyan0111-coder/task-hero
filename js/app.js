@@ -11,6 +11,11 @@ function currentUser() {
     return JSON.parse(localStorage.getItem("taskhero-user") || "null");
 }
 
+function notificationLabel(icon) {
+    const value = String(icon || "").trim();
+    return value && !/\p{Extended_Pictographic}/u.test(value) ? value : "Update";
+}
+
 function requireAuth(target) {
     if (currentUser()) {
         window.location.href = target;
@@ -144,7 +149,7 @@ function notifications() {
         </div>
         ${items.length ? items.map(n => `
             <div style="display:flex;gap:12px;padding:14px 20px;border-bottom:1px solid ${document.body.classList.contains("dark-mode") ? "#2a2a2a" : "#f5f5f5"}">
-                <span style="font-size:20px">${n.icon}</span>
+                <span style="font-size:11px;font-weight:600;color:${subColor}">${notificationLabel(n.icon)}</span>
                 <div>
                     <div style="font-size:13px;color:${color};line-height:1.4">${n.text}</div>
                     <div style="font-size:11px;color:${subColor};margin-top:3px">${n.time}</div>
